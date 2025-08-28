@@ -1,0 +1,63 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
+body {
+  font-family: 'Inter', sans-serif;
+  @apply bg-gray-900 text-gray-100; /* Alterado para fundo escuro e texto claro */
+}
+
+@layer base {
+  :root {
+    --background: 222.2 84% 4.9%; /* Fundo escuro */
+    --foreground: 210 40% 98%; /* Texto claro */
+    --card: 222.2 84% 4.9%; /* Card escuro */
+    --card-foreground: 210 40% 98%; /* Texto do card claro */
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    --primary: 210 40% 98%; /* Botões e elementos primários claros */
+    --primary-foreground: 222.2 47.4% 11.2%; /* Texto de botões primários escuro */
+    --secondary: 215.4 16.3% 46.9%; /* Secundário cinza */
+    --secondary-foreground: 210 40% 98%;
+    --muted: 215.4 16.3% 46.9%;
+    --muted-foreground: 215.4 16.3% 56.9%;
+    --accent: 215.4 16.3% 46.9%;
+    --accent-foreground: 210 40% 98%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+    --border: 215.4 16.3% 36.9%; /* Borda mais escura */
+    --input: 215.4 16.3% 36.9%; /* Input mais escuro */
+    --ring: 210 40% 98%;
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #333; /* Fundo da barra de rolagem mais escuro */
+}
+
+::-webkit-scrollbar-thumb {
+  background: #666; /* Cor do "polegar" da barra de rolagem */
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #888;
+}

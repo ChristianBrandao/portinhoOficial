@@ -1,0 +1,9 @@
+## Pages
+- [Cadastro - Caikmisera](/register): Crie sua conta para participar dos sorteios.
+- [Detalhes do Prêmio -](/prizedetail): No description available
+- [Ganhadores - Portinho](/winners): Confira a lista de todos os ganhadores dos nossos sorteios.
+- [Login - Portinho](/login): Acesse sua conta para ver seus números e participar de sorteios.
+- [Meus Números - Portinho](/mynumbers): Consulte os números que você comprou em nossos sorteios.
+- [Pagamento Confirmado - Portinho](/paymentsuccess): Seu pagamento foi confirmado com sucesso!
+- [Portinho - Sorteios e Prêmios](/home): Participe dos nossos sorteios e ganhe prêmios incríveis como motocicletas 0km, iPhones e mais!
+- [Sorteios - Portinho](/raffles): Veja todos os sorteios ativos, concluídos e em breve.
