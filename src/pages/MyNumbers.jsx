@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
@@ -8,46 +7,64 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogClose } from '@/components/ui/dialog';
-import { ShoppingCart, Search, AlertTriangle } from 'lucide-react';
+import { ShoppingCart, Search, AlertTriangle, Loader, Frown } from 'lucide-react';
 
-const MyNumbers = () => {
+// Importa as funções do seu arquivo api.js
+import { findUserByPhone, getMyNumbers } from '@/services/api';
+
+const MeusNumeros = () => {
     const { toast } = useToast();
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [phone, setPhone] = useState('');
+    const [numbers, setNumbers] = useState([]);
     const [searched, setSearched] = useState(false);
-    const [purchases, setPurchases] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isError, setIsError] = useState(false);
 
-    const handleFeatureClick = (e) => {
+    const handleSearch = async (e) => {
         e.preventDefault();
-        toast({
-            title: "🚧 Este recurso ainda não foi implementado—mas não se preocupe! Você pode solicitá-lo no seu próximo prompt! 🚀"
-        });
-    };
-
-    const handleSearch = (e) => {
-        e.preventDefault();
-        // For demonstration, we'll use mock data.
-        // In a real app, you would fetch this from your backend (e.g., Supabase).
-        const MOCK_DATA = {
-            '(99) 99999-9999': [
-                { id: 1, title: 'Adv 2025 Okm', date: '25/08/2025', numbers: ['12345', '67890'], status: 'pago' },
-                { id: 2, title: 'iPhone 16 Pro', date: '24/08/2025', numbers: ['54321'], status: 'pendente' }
-            ]
-        };
-
-        const userPurchases = MOCK_DATA[phone] || [];
-        setPurchases(userPurchases);
+        setIsLoading(true);
         setSearched(true);
-        setIsDialogOpen(false);
-        if (userPurchases.length === 0) {
+        setIsError(false);
+        setIsDialogOpen(false); // Fecha o modal
+
+        // Remove a máscara do telefone
+        const unmaskedPhone = phone.replace(/\D/g, '');
+
+        try {
+            // Passo 1: Buscar o usuário usando a função do api.js
+            const userData = await findUserByPhone(unmaskedPhone);
+
+            if (!userData) {
+                // Caso a função retorne null, o usuário não foi encontrado
+                throw new Error('Usuário não encontrado.');
+            }
+            
+            // Passo 2: Usar o ID do usuário para buscar seus números com a função do api.js
+            const userNumbers = await getMyNumbers(userData.id);
+            setNumbers(userNumbers);
+
+            if (userNumbers.length === 0) {
+                 toast({
+                     title: 'Nenhuma compra encontrada',
+                     description: 'Não encontramos compras para este número de telefone.',
+                 });
+            }
+
+        } catch (error) {
+            console.error("Erro na busca:", error);
+            setIsError(true);
+            setNumbers([]); // Limpa os números
             toast({
-                title: 'Nenhuma compra encontrada',
-                description: 'Não encontramos compras para este número de telefone.',
-                variant: 'destructive'
+                title: 'Erro na busca',
+                description: error.message || 'Não foi possível encontrar suas compras. Verifique o número e tente novamente.',
+                variant: 'destructive',
             });
+        } finally {
+            setIsLoading(false);
         }
     };
-    
+
     return (
         <>
             <Helmet>
@@ -59,7 +76,7 @@ const MyNumbers = () => {
 
             <div className="min-h-screen bg-gray-900 flex flex-col items-center">
                 <Header />
-                <main className="w-full max-w-2xl px-4 py-8">
+                <main className="w-full max-w-2xl px-4 py-8 flex-grow">
                     <motion.div
                         initial={{ opacity: 0, y: 50 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -83,46 +100,55 @@ const MyNumbers = () => {
                         transition={{ delay: 0.4 }}
                         className="mt-6"
                     >
+                        {/* Estado inicial: mostrar alerta para buscar */}
                         {!searched && (
                             <div className="bg-yellow-900 border-l-4 border-yellow-600 text-yellow-200 p-4 rounded-md flex items-center">
                                 <AlertTriangle className="h-5 w-5 mr-3" />
-                                <p>Clique em buscar para localizar suas compras</p>
+                                <p>Clique em "Buscar" para localizar suas compras.</p>
+                            </div>
+                        )}
+                        
+                        {/* Estado de carregamento */}
+                        {isLoading && (
+                            <div className="flex justify-center items-center py-10 text-gray-400">
+                                <Loader className="animate-spin mr-2 h-6 w-6" /> Buscando...
                             </div>
                         )}
 
-                        {searched && purchases.length > 0 && (
-                            <div className="space-y-4">
-                                {purchases.map(purchase => (
-                                    <div key={purchase.id} className="bg-gray-800 rounded-lg shadow p-4">
-                                        <h2 className="font-bold text-lg text-gray-100">{purchase.title}</h2>
-                                        <p className="text-sm text-gray-400">Comprado em: {purchase.date}</p>
-                                        <div className="mt-2">
-                                            <span className={`px-2 py-1 text-xs font-semibold rounded-full ${purchase.status === 'pago' ? 'bg-green-700 text-green-100' : 'bg-yellow-700 text-yellow-100'}`}>
-                                                {purchase.status.charAt(0).toUpperCase() + purchase.status.slice(1)}
-                                            </span>
-                                        </div>
-                                        <p className="mt-3 font-semibold text-gray-100">Seus números:</p>
-                                        <div className="flex flex-wrap gap-2 mt-2">
-                                            {purchase.numbers.map(num => (
-                                                <span key={num} className="bg-blue-700 text-blue-100 px-3 py-1 rounded-md font-mono text-sm">{num}</span>
-                                            ))}
-                                        </div>
+                        {/* Resultados da busca */}
+                        {!isLoading && searched && numbers.length > 0 && (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                {numbers.map((numberObj, index) => (
+                                    <div 
+                                        key={index}
+                                        className="bg-gray-700 text-cyan-400 font-bold text-center py-4 rounded-lg text-lg"
+                                    >
+                                        {numberObj.lotteryNumber}
                                     </div>
                                 ))}
                             </div>
                         )}
                         
-                        {searched && purchases.length === 0 && (
-                            <div className="bg-red-900 border-l-4 border-red-600 text-red-200 p-4 rounded-md flex items-center">
-                                <AlertTriangle className="h-5 w-5 mr-3" />
-                                <p>Nenhum resultado encontrado. Tente outro número.</p>
+                        {/* Nenhum resultado encontrado */}
+                        {!isLoading && searched && numbers.length === 0 && !isError && (
+                            <div className="flex flex-col items-center justify-center py-10 text-gray-400 text-center">
+                                <Frown className="h-16 w-16 mb-4" />
+                                <p className="text-xl font-semibold">Nenhuma compra encontrada.</p>
+                                <p className="mt-2 text-sm">Verifique o número e tente novamente.</p>
                             </div>
                         )}
 
+                        {/* Erro na busca */}
+                        {!isLoading && isError && (
+                            <div className="bg-red-900 border-l-4 border-red-600 text-red-200 p-4 rounded-md flex items-center">
+                                <AlertTriangle className="h-5 w-5 mr-3" />
+                                <p>Houve um problema na busca. Verifique sua conexão e o número informado.</p>
+                            </div>
+                        )}
                     </motion.div>
 
                     <div className="text-center mt-8">
-                        <p className="text-sm text-gray-400">Desenvolvido por <a href="#" onClick={handleFeatureClick} className="text-cyan-400 font-bold">Sorteio.bet</a></p>
+                        <p className="text-sm text-gray-400">Desenvolvido por <a href="#" className="text-cyan-400 font-bold">Sorteio.bet</a></p>
                     </div>
                 </main>
             </div>
@@ -160,4 +186,4 @@ const MyNumbers = () => {
     );
 };
 
-export default MyNumbers;
+export default MeusNumeros;

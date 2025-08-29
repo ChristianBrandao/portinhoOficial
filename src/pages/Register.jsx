@@ -3,7 +3,7 @@ import { Helmet } from 'react-helmet';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import InputMask from 'react-input-mask';
-import { v4 as uuidv4 } from 'uuid'; // Importa a função para gerar ID único
+import { v4 as uuidv4 } from 'uuid';
 import Header from '@/components/shared/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -114,7 +114,7 @@ const Register = () => {
   
   const registerUser = async (userData) => {
     // URL da sua API de cadastro na AWS (substitua pela sua URL real)
-    const apiUrl = 'https://sua-api-gateway-url.amazonaws.com/prod/register';
+    const apiUrl = 'https://3wshbwd4ta.execute-api.sa-east-1.amazonaws.com/Prod/user';
 
     try {
       const response = await fetch(apiUrl, {
@@ -184,7 +184,7 @@ const Register = () => {
   return (
     <>
       <Helmet>
-        <title>Cadastro - Caikmisera</title>
+        <title>Cadastro - portinho</title>
         <meta name="description" content="Crie sua conta para participar dos sorteios." />
         <meta property="og:title" content="Cadastro - Caikmisera" />
         <meta property="og:description" content="Crie sua conta para participar dos sorteios." />

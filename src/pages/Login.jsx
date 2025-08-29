@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { Link, useNavigate } from 'react-router-dom';
@@ -10,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import InputMask from 'react-input-mask';
+// Importa a função de autenticação do seu arquivo api.js
 import { authenticateUser } from '@/services/api';
 
 const Login = () => {
@@ -22,15 +22,20 @@ const Login = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsLoading(true);
+
         try {
+            // Usa a função importada para fazer a chamada para o backend
             const userData = await authenticateUser(phone, password);
+            
             toast({
                 title: `Bem-vindo, ${userData.name}!`,
                 description: 'Login realizado com sucesso.',
             });
-            // Aqui você pode salvar o token/sessão do usuário (ex: em localStorage)
-            // e atualizar um contexto de autenticação.
-            // Por enquanto, apenas redirecionamos.
+            
+            // Salva as informações do usuário no localStorage para manter a sessão
+            localStorage.setItem('user', JSON.stringify(userData));
+
+            // Redireciona para a página de números do usuário
             navigate('/meus-numeros');
         } catch (error) {
             toast({

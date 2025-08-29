@@ -1,116 +1,145 @@
-import { MOCK_PRIZE_DATA } from './mockData';
+// Substitua esta URL pela URL base da sua API no API Gateway
+const API_BASE_URL = 'https://3wshbwd4ta.execute-api.sa-east-1.amazonaws.com/Prod';
 
-let prizeData = MOCK_PRIZE_DATA;
-
-const findNextAvailableWinnerTicket = () => {
-    const availableWinner = prizeData.winners.find(w => !w.awarded);
-    return availableWinner ? availableWinner.id : null;
+/**
+ * Função para lidar com erros de resposta da API
+ * @param {Response} response A resposta da requisição.
+ * @returns {Promise<any>} O corpo da resposta, ou um erro se a resposta não for OK.
+ */
+const handleResponse = async (response) => {
+    if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro na requisição.');
+    }
+    return response.json();
 };
 
-export const findUserByPhone = async (phone) => {
-  console.log(`[API MOCK] Buscando usuário com telefone: ${phone}`);
-  return new Promise(resolve => {
-    setTimeout(() => {
-      const MOCK_USER_DATA = {
-        '(21) 99999-9999': {
-          id: 'user-123',
-          name: 'CHRISTIAN XAVIER BRANDAO',
-          phone: '(21) 9****-****'
-        },
-        '(11) 11111-1111': {
-          id: 'user-456',
-          name: 'Maria Oliveira',
-          phone: '(11) 1****-****'
-        }
-      };
-      const user = MOCK_USER_DATA[phone] || null;
-      resolve(user);
-    }, 1000);
-  });
-};
-
-export const reserveNumbersAndCreatePayment = async (orderDetails) => {
-  console.log('[API MOCK] Reservando números e criando pagamento:', orderDetails);
-  return new Promise(resolve => {
-    setTimeout(() => {
-      const reservationId = `res_${Date.now()}`;
-      const pixData = {
-        qrCode: `00020126580014br.gov.bcb.pix0136${reservationId}-4b1b-49d3-9b27-2c2a6a4270155204000053039865802BR5925NOME DO VENDEDOR6009SAO PAULO62070503***6304E2D3`,
-        copyPaste: `00020126580014br.gov.bcb.pix0136${reservationId}-4b1b-49d3-9b27-2c2a6a4270155204000053039865802BR5925NOME DO VENDEDOR6009SAO PAULO62070503***6304E2D3`,
-        reservationId: reservationId,
-      };
-      resolve(pixData);
-    }, 1500);
-  });
-};
-
-export const checkPaymentStatus = async (reservationId, user) => {
-  console.log(`[API MOCK] Verificando status da reserva: ${reservationId}`);
-  return new Promise(resolve => {
-    setTimeout(() => {
-      const isPaid = Math.random() > 0.7; 
-      if (isPaid) {
-        const winningTicket = findNextAvailableWinnerTicket();
-        
-        const response = { 
-          status: 'paid', 
-          reservationId: reservationId,
-          purchasedNumbers: ['12345', '67890', '54321', winningTicket || '98765'].filter(Boolean),
-          productName: prizeData.name,
-          winningTicket: winningTicket, 
-        };
-
-        if (winningTicket) {
-            console.log(`[API MOCK] Usuário ${user.name} ganhou com o bilhete ${winningTicket}`);
-            const winnerIndex = prizeData.winners.findIndex(w => w.id === winningTicket);
-            if(winnerIndex !== -1) {
-                prizeData.winners[winnerIndex] = { ...prizeData.winners[winnerIndex], awarded: true, name: user.name, date: new Date().toLocaleDateString('pt-BR') };
-            }
-        }
-        
-        resolve(response);
-      } else {
-        resolve({ status: 'pending' });
-      }
-    }, 2000);
-  });
-};
-
-export const getPrizeData = async () => {
-    return new Promise(resolve => setTimeout(() => resolve(prizeData), 500));
-}
-
-export const getWinners = async () => {
-    const awarded = prizeData.winners.filter(w => w.awarded);
-    return new Promise(resolve => setTimeout(() => resolve(awarded), 500));
-}
-
+/**
+ * Autentica um usuário com telefone e senha.
+ * @param {string} phone O telefone do usuário.
+ * @param {string} password A senha do usuário.
+ * @returns {Promise<object>} Os dados do usuário logado.
+ */
 export const authenticateUser = async (phone, password) => {
-  console.log(`[API MOCK] Autenticando usuário: ${phone}`);
-  return new Promise((resolve, reject) => {
-    setTimeout(() => {
-      if (phone === '(21) 99999-9999' && password === 'password') {
-        resolve({
-          id: 'user-123',
-          name: 'CHRISTIAN XAVIER BRANDAO',
-          email: 'christian@example.com',
-          token: 'mock-jwt-token'
+    try {
+        const response = await fetch(`${API_BASE_URL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, password }),
         });
-      } else {
-        reject(new Error('Credenciais inválidas.'));
-      }
-    }, 1000);
-  });
+        return await handleResponse(response);
+    } catch (error) {
+        console.error('Erro na autenticação:', error);
+        throw error;
+    }
 };
 
+/**
+ * Cadastra um novo usuário.
+ * @param {object} userData Os dados do novo usuário.
+ * @returns {Promise<object>} A mensagem de sucesso do cadastro.
+ */
+export const registerUser = async (userData) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/user`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(userData),
+        });
+        return await handleResponse(response);
+    } catch (error) {
+        console.error('Erro no cadastro:', error);
+        throw error;
+    }
+};
+
+/**
+ * Busca um usuário pelo número de telefone.
+ * @param {string} phone O número de telefone a ser buscado.
+ * @returns {Promise<object>} Os dados do usuário, ou null se não for encontrado.
+ */
+export const findUserByPhone = async (phone) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/user?phone=${phone}`, {
+            method: 'GET',
+        });
+        const data = await handleResponse(response);
+        return data;
+    } catch (error) {
+        console.error('Erro ao buscar usuário por telefone:', error);
+        // Retorna null se o usuário não for encontrado (status 404)
+        if (error.message.includes('não encontrado')) {
+            return null;
+        }
+        throw error;
+    }
+};
+
+/**
+ * Inicia uma nova compra, reservando os números e criando o pagamento.
+ * @param {object} orderDetails Os detalhes da compra.
+ * @returns {Promise<object>} Os dados de pagamento e o ID da reserva.
+ */
+export const reserveNumbersAndCreatePayment = async (orderDetails) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/purchases`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderDetails),
+        });
+        return await handleResponse(response);
+    } catch (error) {
+        console.error('Erro ao iniciar a compra:', error);
+        throw error;
+    }
+};
+
+/**
+ * Verifica o status de uma compra pelo ID da reserva.
+ * @param {string} reservationId O ID da reserva.
+ * @returns {Promise<object>} O status da compra e os números comprados, se pagos.
+ */
+export const checkPaymentStatus = async (reservationId) => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/purchases/${reservationId}/status`, {
+            method: 'GET',
+        });
+        return await handleResponse(response);
+    } catch (error) {
+        console.error('Erro ao verificar o status do pagamento:', error);
+        throw error;
+    }
+};
+
+/**
+ * Busca os números comprados por um usuário.
+ * @param {string} userId O ID do usuário.
+ * @returns {Promise<object>} Os números comprados, agrupados por sorteio.
+ */
 export const getMyNumbers = async (userId) => {
-    console.log(`[API MOCK] Buscando números para o usuário: ${userId}`);
-    return new Promise(resolve => {
-        setTimeout(() => {
-            resolve({
-                'Adv 2025 0km': ['12345', '67890', '54321'],
-                'iPhone 15 Pro Max': ['99887', '11223']
-            });
-        }, 1000);
-    });
+    try {
+        const response = await fetch(`${API_BASE_URL}/meus-numeros?userId=${userId}`, {
+            method: 'GET',
+        });
+        return await handleResponse(response);
+    } catch (error) {
+        console.error('Erro ao buscar números do usuário:', error);
+        throw error;
+    }
+};
+
+/**
+ * Busca os dados dos sorteios disponíveis.
+ * @returns {Promise<Array>} Uma lista com os sorteios.
+ */
+export const getRaffles = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/raffles`, {
+            method: 'GET',
+        });
+        return await handleResponse(response);
+    } catch (error) {
+        console.error('Erro ao buscar os sorteios:', error);
+        throw error;
+    }
 };
