@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import { getPrizeData, getWinners } from '@/services/api';
+import { getRaffles, getWinners } from '@/services/api';
 
 const AppContext = createContext();
 
@@ -12,7 +12,7 @@ export const AppProvider = ({ children }) => {
         setLoading(true);
         try {
             const [prizeResponse, winnersResponse] = await Promise.all([
-                getPrizeData(),
+                getRaffles(),
                 getWinners()
             ]);
             setPrize(prizeResponse);
