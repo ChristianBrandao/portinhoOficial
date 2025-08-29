@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Helmet } from 'react-helmet';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import InputMask from 'react-input-mask';
+import { v4 as uuidv4 } from 'uuid'; // Importa a função para gerar ID único
 import Header from '@/components/shared/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -111,22 +111,31 @@ const Register = () => {
         setFormData(prev => ({ ...prev, city: '' }));
      }
   };
-
+  
   const registerUser = async (userData) => {
-    console.log("Enviando para o backend:", userData);
-    
-    // Simulação da chamada para o backend
-    // Substitua este bloco pelo seu fetch para a API da AWS
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        // Simular sucesso ou falha
-        if (userData.email.includes("fail")) {
-          reject(new Error("Este e-mail já está em uso."));
-        } else {
-          resolve({ success: true, message: "Usuário cadastrado com sucesso!" });
-        }
-      }, 1500);
-    });
+    // URL da sua API de cadastro na AWS (substitua pela sua URL real)
+    const apiUrl = 'https://sua-api-gateway-url.amazonaws.com/prod/register';
+
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(userData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Erro no servidor. Tente novamente.');
+      }
+
+      const data = await response.json();
+      return data;
+
+    } catch (error) {
+      throw new Error(error.message || 'Não foi possível conectar com o servidor.');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -144,7 +153,13 @@ const Register = () => {
     
     try {
       const { confirmPassword, confirmPhone, ...apiData } = formData;
-      const response = await registerUser(apiData);
+      
+      const dataWithId = {
+          ...apiData,
+          id: uuidv4(), // Gera um ID único e o adiciona ao objeto
+      };
+
+      const response = await registerUser(dataWithId);
 
       toast({
         title: 'Cadastro Concluído!',
@@ -262,7 +277,7 @@ const Register = () => {
                         <SelectTrigger id="uf" className="bg-gray-700 text-gray-100 border-gray-600">
                             <SelectValue placeholder="-- UF --" />
                         </SelectTrigger>
-                        <SelectContent className="bg-gray-800 text-gray-100 border-gray-700">
+                        <SelectContent position="popper" className="bg-gray-800 text-gray-100 border-gray-700">
                             {ufs.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
                         </SelectContent>
                     </Select>
@@ -273,7 +288,7 @@ const Register = () => {
                         <SelectTrigger id="city" className="bg-gray-700 text-gray-100 border-gray-600">
                             <SelectValue placeholder={!formData.uf ? "Selecione o estado" : "Selecione a cidade"} />
                         </SelectTrigger>
-                        <SelectContent className="bg-gray-800 text-gray-100 border-gray-700">
+                        <SelectContent position="popper" className="bg-gray-800 text-gray-100 border-gray-700">
                              {cities.map(city => <SelectItem key={city} value={city}>{city}</SelectItem>)}
                         </SelectContent>
                     </Select>

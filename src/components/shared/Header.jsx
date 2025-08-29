@@ -28,7 +28,7 @@ const Logo = () => (
       paintOrder="stroke"
       letterSpacing="1"
     >
-      @PORTINHO
+    @PORTINHO 
     </text>
     <path d="M4,25 A20,20 0 1,1 46,25" fill="none" stroke="white" strokeWidth="3" />
     <path d="M4,25 A20,20 0 1,0 46,25" fill="none" stroke="black" strokeWidth="6" />
