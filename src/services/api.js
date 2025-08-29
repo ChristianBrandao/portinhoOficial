@@ -143,3 +143,17 @@ export const getRaffles = async () => {
         throw error;
     }
 };
+
+/**
+ * Busca a lista de ganhadores dos sorteios.
+ * @returns {Promise<Array>} Uma lista com os ganhadores.
+ */
+export const getWinners = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/winners`);
+        return await handleResponse(response);
+    } catch (error) {
+        console.error('Erro ao buscar a lista de ganhadores:', error);
+        throw error;
+    }
+};
