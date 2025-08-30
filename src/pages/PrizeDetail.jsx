@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
@@ -77,7 +76,7 @@ const PrizeDetail = () => {
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
                         
                         <div className="bg-gray-800 rounded-lg shadow-md overflow-hidden mb-8">
-                           <img  alt={prize.imageAlt} className="w-full h-auto object-cover" src="https://images.unsplash.com/photo-1585054393722-7876ed285ce4" />
+                            <img alt={prize.imageAlt} className="w-full h-auto object-cover" src={prize.imageURL} />
                              <div className="p-4 space-y-1">
                                 <h2 className="text-xl font-bold text-gray-100">{prize.name}</h2>
                                 <p className="text-gray-400 text-base">{prize.description}</p>
@@ -210,7 +209,7 @@ const PrizeDetail = () => {
                         </div>
                         
                         <div className="text-center mt-8">
-                          <p className="text-sm text-gray-400">Desenvolvido por <a href="#" onClick={handleFeatureClick} className="text-cyan-400 font-bold">Sorteio.bet</a></p>
+                            <p className="text-sm text-gray-400">Desenvolvido por <a href="#" onClick={handleFeatureClick} className="text-cyan-400 font-bold">Sorteio.bet</a></p>
                         </div>
                     </motion.div>
                 </main>
