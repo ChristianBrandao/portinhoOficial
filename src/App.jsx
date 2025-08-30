@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { AppProvider } from '@/context/AppContext';
 import Home from '@/pages/Home';
 import PrizeDetail from '@/pages/PrizeDetail';
@@ -16,7 +16,7 @@ function App() {
   return (
     <AppProvider>
       <Routes>
-        <Route path="/" element={<Navigate to="/prize/ps5-mega-sorteio-2025" />} />
+        <Route path="/" element={<Home />} />
         <Route path="/prize/:id" element={<PrizeDetail />} />
         <Route path="/sorteios" element={<Raffles />} />
         <Route path="/meus-numeros" element={<MyNumbers />} />
