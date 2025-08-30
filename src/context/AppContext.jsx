@@ -5,7 +5,6 @@ const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
     const [prize, setPrize] = useState(null);
-    const [allWinners, setAllWinners] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const loadData = useCallback(async () => {
@@ -20,14 +19,22 @@ export const AppProvider = ({ children }) => {
                 instantPrizes = await getInstantPrizes(raffleResponse.id);
             }
 
-            // Passo 3: Adiciona a lista de prêmios ao objeto do sorteio.
+            // Passo 3: Associa o nome do prêmio a cada item.
+            // A sua API retorna um array de objetos, e cada um já tem o 'prizeName'
+            // O seu front-end precisa usar essa propriedade para exibir o nome do prêmio
+            const formattedPrizes = instantPrizes.map(p => ({
+                ...p,
+                prizeName: p.prizeName // Garante que o prizeName está no objeto
+            }));
+
+            // Passo 4: Adiciona a lista de prêmios ao objeto do sorteio.
             setPrize({
                 ...raffleResponse,
-                winners: instantPrizes
+                winners: formattedPrizes
             });
 
         } catch (error) {
-            console.error("Falha ao carregar dados do aplicativo", error);
+            console.error("Failed to load app data", error);
         } finally {
             setLoading(false);
         }
