@@ -157,3 +157,19 @@ export const getWinners = async () => {
         throw error;
     }
 };
+
+/**
+ * Busca os prêmios instantâneos disponíveis.
+ * @returns {Promise<Array>} Uma lista com os prêmios instantâneos.
+ */
+export const getInstantPrizes = async () => {
+    try {
+        const response = await fetch(`${API_BASE_URL}/instant-prizes`, {
+            method: 'GET',
+        });
+        return await handleResponse(response);
+    } catch (error) {
+        console.error('Erro ao buscar os prêmios instantâneos:', error);
+        throw error;
+    }
+};
