@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import { getRaffles, getWinners } from '@/services/api';
+import { getRaffles, getInstantPrizes } from '@/services/api';
 
 const AppContext = createContext();
 
@@ -11,14 +11,23 @@ export const AppProvider = ({ children }) => {
     const loadData = useCallback(async () => {
         setLoading(true);
         try {
-            const [prizeResponse, winnersResponse] = await Promise.all([
-                getRaffles(),
-                getWinners()
-            ]);
-            setPrize(prizeResponse);
-            setAllWinners(winnersResponse);
+            // Passo 1: Busca os detalhes do sorteio principal.
+            const raffleResponse = await getRaffles();
+
+            let instantPrizes = [];
+            // Passo 2: Se o sorteio foi encontrado e tem um ID, busca os prêmios instantâneos.
+            if (raffleResponse && raffleResponse.id) {
+                instantPrizes = await getInstantPrizes(raffleResponse.id);
+            }
+
+            // Passo 3: Adiciona a lista de prêmios ao objeto do sorteio.
+            setPrize({
+                ...raffleResponse,
+                winners: instantPrizes
+            });
+
         } catch (error) {
-            console.error("Failed to load app data", error);
+            console.error("Falha ao carregar dados do aplicativo", error);
         } finally {
             setLoading(false);
         }
@@ -38,6 +47,7 @@ export const AppProvider = ({ children }) => {
             });
             return { ...currentPrize, winners: updatedWinners };
         });
+        // Recarrega os dados para pegar a última versão do backend
         loadData(); 
     }, [loadData]);
 
@@ -48,7 +58,7 @@ export const AppProvider = ({ children }) => {
 
     const value = {
         prize,
-        allWinners,
+        // allWinners foi removido, a lista de vencedores está no objeto 'prize'
         loading,
         awardPrize,
         findWinnerByTicket,
