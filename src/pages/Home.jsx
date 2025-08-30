@@ -59,17 +59,17 @@ function Home() {
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 1.0, duration: 0.6 }}
                   className="relative group">
-                  <div className="relative">
-                    <img  alt={prize.imageAlt} className="w-full h-auto object-cover" src="https://images.unsplash.com/photo-1585054393722-7876ed285ce4" />
-                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300"></div>
-                    <motion.div 
-                      initial={{ scale: 0, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      transition={{ delay: 1.3, duration: 0.4 }}
-                      className="absolute bottom-4 left-4 bg-green-500 text-white px-3 py-1 rounded-md text-sm font-semibold shadow-lg">
-                      Corre que está acabando!
-                    </motion.div>
-                  </div>
+                    <div className="relative">
+                      <img alt={prize.imageAlt} className="w-full h-auto object-cover" src={prize.imageURL} />
+                      <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-20 transition-all duration-300"></div>
+                      <motion.div 
+                        initial={{ scale: 0, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        transition={{ delay: 1.3, duration: 0.4 }}
+                        className="absolute bottom-4 left-4 bg-green-500 text-white px-3 py-1 rounded-md text-sm font-semibold shadow-lg">
+                        Corre que está acabando!
+                      </motion.div>
+                    </div>
 
                   <div className="p-4 space-y-1">
                     <h2 className="text-xl font-bold text-gray-100 group-hover:text-cyan-400 transition-colors">{prize.name}</h2>
