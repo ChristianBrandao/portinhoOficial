@@ -16,7 +16,7 @@ function App() {
   return (
     <AppProvider>
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<PrizeDetail  />} />
         <Route path="/prize/:id" element={<PrizeDetail />} />
         <Route path="/sorteios" element={<Raffles />} />
         <Route path="/meus-numeros" element={<MyNumbers />} />
