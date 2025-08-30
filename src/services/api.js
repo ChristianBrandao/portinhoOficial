@@ -145,26 +145,17 @@ export const getRaffles = async () => {
 };
 
 /**
- * Busca a lista de ganhadores dos sorteios.
- * @returns {Promise<Array>} Uma lista com os ganhadores.
- */
-export const getWinners = async () => {
-    try {
-        const response = await fetch(`${API_BASE_URL}/winners`);
-        return await handleResponse(response);
-    } catch (error) {
-        console.error('Erro ao buscar a lista de ganhadores:', error);
-        throw error;
-    }
-};
-
-/**
- * Busca os prêmios instantâneos disponíveis.
+ * Busca os prêmios instantâneos de um sorteio específico.
+ * @param {string} raffleId O ID do sorteio.
  * @returns {Promise<Array>} Uma lista com os prêmios instantâneos.
  */
-export const getInstantPrizes = async () => {
+export const getInstantPrizes = async (raffleId) => {
+    if (!raffleId) {
+        console.error("ID do sorteio não fornecido para buscar prêmios.");
+        return [];
+    }
     try {
-        const response = await fetch(`${API_BASE_URL}/instant-prizes`, {
+        const response = await fetch(`${API_BASE_URL}/instantprizes?raffleId=${raffleId}`, {
             method: 'GET',
         });
         return await handleResponse(response);
