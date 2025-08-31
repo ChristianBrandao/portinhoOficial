@@ -2,14 +2,10 @@ import React, { useState, useEffect } from 'react';
 
 // Componente mock de `Helmet` para gerenciar metadados
 const Helmet = ({ children }) => {
-  // Neste ambiente, não é necessário modificar o <head> do documento,
-  // então este componente simplesmente renderiza os seus filhos.
   return <div style={{ display: 'none' }}>{children}</div>;
 };
 
-// Componente mock de `motion` (de framer-motion) para animações.
-// As animações são desativadas neste ambiente, mas a estrutura
-// do componente é mantida.
+// Componente mock de `motion` (de framer-motion)
 const motion = {
   div: ({ children, className, ...props }) => {
     return (
@@ -20,9 +16,7 @@ const motion = {
   },
 };
 
-// Componente mock de `Link` (de react-router-dom).
-// Substituímos por uma tag <a> regular e usamos um onClick
-// para simular a navegação ou o clique.
+// Componente mock de `Link`
 const Link = ({ to, children, className, ...props }) => {
   const handleLinkClick = (e) => {
     e.preventDefault();
@@ -47,7 +41,7 @@ const Header = () => (
   </header>
 );
 
-// Componente mock de `Button` (de shadcn/ui)
+// Componente mock de `Button`
 const Button = ({ children, className, onClick }) => {
   return (
     <button className={`p-2 rounded-md ${className}`} onClick={onClick}>
@@ -56,21 +50,22 @@ const Button = ({ children, className, onClick }) => {
   );
 };
 
-// Hook mock de `useToast` (de shadcn/ui) para exibir mensagens
+// Hook mock de `useToast`
 const useToast = () => {
   return {
     toast: ({ title, description }) => {
       console.log(`Toast: ${title} - ${description}`);
       const toastElement = document.createElement('div');
-      toastElement.className = 'fixed bottom-4 right-4 bg-black text-white px-4 py-2 rounded-lg shadow-xl animate-fade-in-up z-50';
+      toastElement.className =
+        'fixed bottom-4 right-4 bg-black text-white px-4 py-2 rounded-lg shadow-xl animate-fade-in-up z-50';
       toastElement.innerHTML = `<strong>${title}</strong><br/>${description}`;
       document.body.appendChild(toastElement);
       setTimeout(() => toastElement.remove(), 3000);
-    }
+    },
   };
 };
 
-// Componente mock de `Calendar` (de lucide-react)
+// Componente mock de `Calendar`
 const Calendar = (props) => (
   <svg
     {...props}
@@ -99,20 +94,26 @@ const Raffles = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // IMPORTANTE: URL da sua API fornecida pelo usuário.
   const API_URL = 'https://3wshbwd4ta.execute-api.sa-east-1.amazonaws.com/Prod';
 
-  // Usa useEffect para buscar os dados da API quando o componente for montado.
   useEffect(() => {
     const fetchRaffles = async () => {
       try {
         const response = await fetch(`${API_URL}/raffles`);
-        if (!response.ok) {
-          throw new Error('Erro ao buscar dados dos sorteios.');
-        }
+        if (!response.ok) throw new Error('Erro ao buscar dados dos sorteios.');
+
         const data = await response.json();
-        // Assume que a API retorna um array de objetos de sorteio.
-        setRaffles(data);
+        console.log('API /raffles ->', data);
+
+        // Normaliza resposta para array
+        const list =
+          Array.isArray(data) ? data :
+          Array.isArray(data?.items) ? data.items :
+          Array.isArray(data?.data) ? data.data :
+          Array.isArray(data?.raffles) ? data.raffles :
+          [];
+
+        setRaffles(list);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -125,18 +126,16 @@ const Raffles = () => {
   const handleFeatureClick = (e) => {
     e.preventDefault();
     toast({
-      title: "🚧 Este recurso ainda não foi implementado—mas não se preocupe! Você pode solicitá-lo no seu próximo prompt! 🚀",
-      description: "Funcionalidade em desenvolvimento."
+      title: '🚧 Este recurso ainda não foi implementado',
+      description: 'Funcionalidade em desenvolvimento.',
     });
   };
-  
+
   const tabs = ['Ativos', 'Concluídos', 'Em breve'];
 
-  // Filtra os sorteios com base na aba ativa.
-  // Assumimos que o objeto de sorteio retornado da API possui um campo 'status'.
-  const filteredRaffles = raffles.filter(raffle => {
-    // É necessário que o backend defina os status para 'active', 'completed', 'upcoming'
-    // ou algo similar para que esta lógica funcione.
+  // Filtragem segura
+  const list = Array.isArray(raffles) ? raffles : [];
+  const filteredRaffles = list.filter((raffle) => {
     if (activeTab === 'Ativos') return raffle.status === 'active';
     if (activeTab === 'Concluídos') return raffle.status === 'completed';
     if (activeTab === 'Em breve') return raffle.status === 'upcoming';
@@ -147,9 +146,15 @@ const Raffles = () => {
     <>
       <Helmet>
         <title>Sorteios - Portinho</title>
-        <meta name="description" content="Veja todos os sorteios ativos, concluídos e em breve." />
+        <meta
+          name="description"
+          content="Veja todos os sorteios ativos, concluídos e em breve."
+        />
         <meta property="og:title" content="Sorteios - Portinho" />
-        <meta property="og:description" content="Veja todos os sorteios ativos, concluídos e em breve." />
+        <meta
+          property="og:description"
+          content="Veja todos os sorteios ativos, concluídos e em breve."
+        />
       </Helmet>
 
       <div className="min-h-screen bg-gray-900 flex flex-col items-center">
@@ -159,14 +164,17 @@ const Raffles = () => {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2, duration: 0.8 }}
-            className="bg-gray-800 rounded-lg shadow-md overflow-hidden">
-            
+            className="bg-gray-800 rounded-lg shadow-md overflow-hidden"
+          >
             <div className="p-4 border-b border-gray-700 flex justify-between items-center">
               <div className="flex items-baseline space-x-2">
                 <span className="text-orange-500">⚡</span>
                 <h1 className="text-lg font-bold text-gray-100">Prêmios</h1>
               </div>
-              <Button onClick={handleFeatureClick} className="bg-black text-white hover:bg-gray-700">
+              <Button
+                onClick={handleFeatureClick}
+                className="bg-black text-white hover:bg-gray-700"
+              >
                 Buscar
                 <Calendar className="ml-2 h-4 w-4" />
               </Button>
@@ -191,7 +199,6 @@ const Raffles = () => {
               </div>
             </div>
 
-            {/* Condicional para renderizar o estado de carregamento, erro ou a lista de sorteios */}
             {isLoading ? (
               <div className="p-8 text-center text-gray-400">
                 <p>Carregando sorteios...</p>
@@ -201,7 +208,7 @@ const Raffles = () => {
                 <p>Erro ao carregar os sorteios: {error}</p>
               </div>
             ) : filteredRaffles.length > 0 ? (
-              filteredRaffles.map(raffle => (
+              filteredRaffles.map((raffle) => (
                 <Link key={raffle.id} to={`/prize/${raffle.id}`}>
                   <div className="p-4 cursor-pointer hover:bg-gray-700 transition-colors">
                     <motion.div
@@ -211,15 +218,22 @@ const Raffles = () => {
                       className="flex items-center space-x-4 group"
                     >
                       <div className="w-24 h-24 rounded-lg overflow-hidden flex-shrink-0">
-                        <img 
+                        <img
                           alt={raffle.title}
-                          className="w-full h-full object-cover" 
-                          src={raffle.imageUrl || "https://placehold.co/96x96/4B5563/F3F4F6?text=Sem+Imagem"}
+                          className="w-full h-full object-cover"
+                          src={
+                            raffle.imageUrl ||
+                            'https://placehold.co/96x96/4B5563/F3F4F6?text=Sem+Imagem'
+                          }
                         />
                       </div>
                       <div className="flex-1">
-                        <h2 className="text-lg font-bold text-gray-100 group-hover:text-cyan-400 transition-colors">{raffle.title}</h2>
-                        <p className="text-gray-400 text-sm">{raffle.description}</p>
+                        <h2 className="text-lg font-bold text-gray-100 group-hover:text-cyan-400 transition-colors">
+                          {raffle.title}
+                        </h2>
+                        <p className="text-gray-400 text-sm">
+                          {raffle.description}
+                        </p>
                         {raffle.status === 'active' && (
                           <div className="mt-2 bg-green-500 text-white px-3 py-1 rounded-md text-xs font-semibold inline-block shadow-sm">
                             Corre que está acabando!
@@ -236,9 +250,18 @@ const Raffles = () => {
               </div>
             )}
           </motion.div>
-          
+
           <div className="text-center mt-8">
-            <p className="text-sm text-gray-400">Desenvolvido por <a href="#" onClick={handleFeatureClick} className="text-cyan-400 font-bold">Sorteio.bet</a></p>
+            <p className="text-sm text-gray-400">
+              Desenvolvido por{' '}
+              <a
+                href="#"
+                onClick={handleFeatureClick}
+                className="text-cyan-400 font-bold"
+              >
+                Sorteio.bet
+              </a>
+            </p>
           </div>
         </main>
       </div>
