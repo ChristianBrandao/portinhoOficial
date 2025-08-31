@@ -156,10 +156,12 @@ const Raffles = () => {
             transition={{ delay: 0.2, duration: 0.8 }}
             className="bg-gray-800 rounded-lg shadow-md overflow-hidden"
           >
-            <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+            <div className="p-4 border-b border-gray-700 flex items-center">
               <div className="flex items-baseline space-x-2">
                 <span className="text-orange-500">⚡</span>
                 <h1 className="text-lg font-bold text-gray-100">Prêmios</h1>
+              </div>
+            </div>
 
             <div className="p-4 border-b border-gray-700 flex items-center space-x-4">
               <span className="text-sm font-semibold text-gray-400">LISTAR</span>
