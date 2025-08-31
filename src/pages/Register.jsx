@@ -12,11 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { User, Loader } from 'lucide-react';
 
-// URL fixa da sua API Gateway (sem .env)
 const API_BASE_URL = "https://3wshbwd4ta.execute-api.sa-east-1.amazonaws.com/Prod";
-
-// helper
-const normalizePhone = (s = '') => s.replace(/\D/g, '');
+const normalizePhone = (s="") => s.replace(/\D/g, "");
 
 const ufs = [
   'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
@@ -27,13 +24,13 @@ export default function Register() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Campos mínimos: Nome completo, Telefone, UF, Cidade, Bairro, CEP e Número
   const [form, setForm] = React.useState({
     fullName: '',
     phone: '',
     uf: '',
     city: '',
     neighborhood: '',
+    street: '',
     cep: '',
     number: ''
   });
@@ -42,14 +39,12 @@ export default function Register() {
   const [loadingCep, setLoadingCep] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // pré-preenche telefone vindo do fluxo anterior (se houver)
   React.useEffect(() => {
     if (location.state?.phone) {
       setForm(p => ({ ...p, phone: location.state.phone }));
     }
   }, [location.state]);
 
-  // carrega cidades ao escolher UF
   const fetchCities = async (uf) => {
     if (!uf) return;
     try {
@@ -63,7 +58,6 @@ export default function Register() {
   };
   React.useEffect(() => { if (form.uf) fetchCities(form.uf); }, [form.uf]);
 
-  // viaCEP para auto-preencher UF, Cidade e Bairro
   const handleCepChange = async (e) => {
     const masked = e.target.value;
     const cep = masked.replace(/\D/g, '');
@@ -74,19 +68,20 @@ export default function Register() {
       try {
         const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
         const d = await r.json();
-        if (d?.erro) {
-          toast({ title: 'CEP não encontrado', description: 'Verifique o CEP e tente novamente.', variant: 'destructive' });
-        } else {
+        if (!d?.erro) {
           setForm(p => ({
             ...p,
             uf: d.uf || p.uf,
             city: d.localidade || p.city,
-            neighborhood: d.bairro || p.neighborhood
+            neighborhood: d.bairro || p.neighborhood,
+            street: d.logradouro || p.street
           }));
           if (d.uf) await fetchCities(d.uf);
+        } else {
+          toast({ title: 'CEP não encontrado', description: 'Verifique o CEP.', variant: 'destructive' });
         }
       } catch {
-        toast({ title: 'Erro ao buscar CEP', description: 'Tente novamente mais tarde.', variant: 'destructive' });
+        toast({ title: 'Erro ao buscar CEP', description: 'Tente novamente.', variant: 'destructive' });
       } finally {
         setLoadingCep(false);
       }
@@ -97,12 +92,8 @@ export default function Register() {
     const { id, value } = e.target;
     setForm(p => ({ ...p, [id]: value }));
   };
+  const handleSelect = (name, value) => setForm(p => ({ ...p, [name]: value, ...(name === 'uf' ? { city: '' } : {}) }));
 
-  const handleSelect = (name, value) => {
-    setForm(p => ({ ...p, [name]: value, ...(name === 'uf' ? { city: '' } : {}) }));
-  };
-
-  // POST direto em /user: { name, phone, address }
   const registerUser = async ({ name, phone, address }) => {
     const res = await fetch(`${API_BASE_URL}/user`, {
       method: 'POST',
@@ -119,28 +110,19 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // validações mínimas
-    if (!form.fullName.trim()) {
-      toast({ title: 'Nome obrigatório', variant: 'destructive' });
-      return;
-    }
-    if (normalizePhone(form.phone).length < 10) {
-      toast({ title: 'Telefone inválido', description: 'Inclua DDD + número.', variant: 'destructive' });
-      return;
-    }
-    if (!form.uf || !form.city || !form.neighborhood || !form.cep || !form.number) {
-      toast({ title: 'Complete o endereço', description: 'UF, Cidade, Bairro, CEP e Número são obrigatórios.', variant: 'destructive' });
-      return;
+    if (!form.fullName.trim()) return toast({ title: 'Nome obrigatório', variant: 'destructive' });
+    if (normalizePhone(form.phone).length < 10) return toast({ title: 'Telefone inválido', variant: 'destructive' });
+    if (!form.uf || !form.city || !form.neighborhood || !form.street || !form.cep || !form.number) {
+      return toast({ title: 'Complete todos os campos', description: 'Rua, Número, Bairro, Cidade, UF e CEP são obrigatórios.', variant: 'destructive' });
     }
 
-    // monta address compacto para o backend
-    const address = `${form.neighborhood}, Nº ${form.number} — ${form.city}/${form.uf} — CEP ${form.cep}`;
+    const address = `${form.street}, Nº ${form.number}, ${form.neighborhood} — ${form.city}/${form.uf} — CEP ${form.cep}`;
 
     setIsSubmitting(true);
     try {
       await registerUser({
         name: form.fullName.trim(),
-        phone: normalizePhone(form.phone), // vira o id no backend
+        phone: normalizePhone(form.phone),
         address
       });
 
@@ -174,13 +156,11 @@ export default function Register() {
 
             <form onSubmit={handleSubmit} className="bg-gray-800 rounded-lg shadow-md p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Nome completo */}
                 <div className="md:col-span-2">
                   <Label htmlFor="fullName" className="text-gray-100">Nome completo</Label>
                   <Input id="fullName" value={form.fullName} onChange={handleInput} required className="bg-gray-700 text-gray-100 border-gray-600" />
                 </div>
 
-                {/* Telefone */}
                 <div className="md:col-span-2">
                   <Label htmlFor="phone" className="text-gray-100">Telefone</Label>
                   <InputMask mask="(99) 99999-9999" value={form.phone} onChange={handleInput}>
@@ -188,7 +168,6 @@ export default function Register() {
                   </InputMask>
                 </div>
 
-                {/* CEP */}
                 <div>
                   <Label htmlFor="cep" className="text-gray-100">CEP</Label>
                   <InputMask mask="99999-999" value={form.cep} onChange={handleCepChange} disabled={loadingCep}>
@@ -196,7 +175,6 @@ export default function Register() {
                   </InputMask>
                 </div>
 
-                {/* UF */}
                 <div>
                   <Label className="text-gray-100">UF</Label>
                   <Select onValueChange={(v) => handleSelect('uf', v)} value={form.uf}>
@@ -209,7 +187,6 @@ export default function Register() {
                   </Select>
                 </div>
 
-                {/* Cidade */}
                 <div>
                   <Label className="text-gray-100">Cidade</Label>
                   <Select onValueChange={(v) => handleSelect('city', v)} value={form.city} disabled={!form.uf || cities.length === 0}>
@@ -222,13 +199,16 @@ export default function Register() {
                   </Select>
                 </div>
 
-                {/* Bairro */}
                 <div>
                   <Label htmlFor="neighborhood" className="text-gray-100">Bairro</Label>
                   <Input id="neighborhood" value={form.neighborhood} onChange={handleInput} required className="bg-gray-700 text-gray-100 border-gray-600" />
                 </div>
 
-                {/* Número */}
+                <div>
+                  <Label htmlFor="street" className="text-gray-100">Rua</Label>
+                  <Input id="street" value={form.street} onChange={handleInput} required className="bg-gray-700 text-gray-100 border-gray-600" />
+                </div>
+
                 <div>
                   <Label htmlFor="number" className="text-gray-100">Número</Label>
                   <Input id="number" value={form.number} onChange={handleInput} required className="bg-gray-700 text-gray-100 border-gray-600" />
