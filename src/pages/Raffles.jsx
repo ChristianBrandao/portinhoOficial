@@ -160,12 +160,6 @@ const Raffles = () => {
               <div className="flex items-baseline space-x-2">
                 <span className="text-orange-500">⚡</span>
                 <h1 className="text-lg font-bold text-gray-100">Prêmios</h1>
-              </div>
-              <Button onClick={handleFeatureClick} className="bg-black text-white hover:bg-gray-700">
-                Buscar
-                <Calendar className="ml-2 h-4 w-4" />
-              </Button>
-            </div>
 
             <div className="p-4 border-b border-gray-700 flex items-center space-x-4">
               <span className="text-sm font-semibold text-gray-400">LISTAR</span>
