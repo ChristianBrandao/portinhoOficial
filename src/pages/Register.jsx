@@ -1,21 +1,25 @@
-import React from "react";
-import { Helmet } from "react-helmet";
-import { useNavigate, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
-import InputMask from "react-input-mask";
-import Header from "@/components/shared/Header";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
-import { User, Loader } from "lucide-react";
+import React from 'react';
+import { Helmet } from 'react-helmet';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { motion } from 'framer-motion';
+import InputMask from 'react-input-mask';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "https://3wshbwd4ta.execute-api.sa-east-1.amazonaws.com/Prod";
-const normalizePhone = (s = "") => s.replace(/\D/g, "");
+import Header from '@/components/shared/Header';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/components/ui/use-toast';
+import { User, Loader } from 'lucide-react';
+
+// URL fixa da sua API Gateway (sem .env)
+const API_BASE_URL = "https://3wshbwd4ta.execute-api.sa-east-1.amazonaws.com/Prod";
+
+// helper
+const normalizePhone = (s = '') => s.replace(/\D/g, '');
 
 const ufs = [
-  "AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"
+  'AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'
 ];
 
 export default function Register() {
@@ -23,66 +27,66 @@ export default function Register() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Campos mínimos: Nome completo, Telefone, UF, Cidade, Bairro, CEP e Número
   const [form, setForm] = React.useState({
-    fullName: "",
-    phone: "",
-    uf: "",
-    city: "",
-    neighborhood: "",
-    cep: "",
-    number: ""
+    fullName: '',
+    phone: '',
+    uf: '',
+    city: '',
+    neighborhood: '',
+    cep: '',
+    number: ''
   });
 
   const [cities, setCities] = React.useState([]);
   const [loadingCep, setLoadingCep] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Pré-preenche telefone vindo da tela anterior (se houver)
+  // pré-preenche telefone vindo do fluxo anterior (se houver)
   React.useEffect(() => {
     if (location.state?.phone) {
-      setForm((p) => ({ ...p, phone: location.state.phone }));
+      setForm(p => ({ ...p, phone: location.state.phone }));
     }
   }, [location.state]);
 
-  // Busca cidades do IBGE ao selecionar UF
+  // carrega cidades ao escolher UF
   const fetchCities = async (uf) => {
     if (!uf) return;
     try {
       const r = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios`);
       const data = await r.json();
-      setCities(data.map((c) => c.nome).sort());
+      setCities(data.map(c => c.nome).sort());
     } catch (e) {
       console.error(e);
-      toast({ title: "Erro", description: "Não foi possível carregar as cidades.", variant: "destructive" });
+      toast({ title: 'Erro', description: 'Não foi possível carregar as cidades.', variant: 'destructive' });
     }
   };
-
   React.useEffect(() => { if (form.uf) fetchCities(form.uf); }, [form.uf]);
 
-  // Auto-preencher a partir do CEP (viaCEP)
+  // viaCEP para auto-preencher UF, Cidade e Bairro
   const handleCepChange = async (e) => {
     const masked = e.target.value;
-    const cep = masked.replace(/\D/g, "");
-    setForm((p) => ({ ...p, cep: masked }));
+    const cep = masked.replace(/\D/g, '');
+    setForm(p => ({ ...p, cep: masked }));
 
     if (cep.length === 8) {
       setLoadingCep(true);
       try {
         const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
         const d = await r.json();
-        if (!d.erro) {
-          setForm((p) => ({
+        if (d?.erro) {
+          toast({ title: 'CEP não encontrado', description: 'Verifique o CEP e tente novamente.', variant: 'destructive' });
+        } else {
+          setForm(p => ({
             ...p,
             uf: d.uf || p.uf,
             city: d.localidade || p.city,
             neighborhood: d.bairro || p.neighborhood
           }));
           if (d.uf) await fetchCities(d.uf);
-        } else {
-          toast({ title: "CEP não encontrado", description: "Verifique o CEP digitado.", variant: "destructive" });
         }
       } catch {
-        toast({ title: "Erro ao buscar CEP", description: "Tente novamente mais tarde.", variant: "destructive" });
+        toast({ title: 'Erro ao buscar CEP', description: 'Tente novamente mais tarde.', variant: 'destructive' });
       } finally {
         setLoadingCep(false);
       }
@@ -91,21 +95,23 @@ export default function Register() {
 
   const handleInput = (e) => {
     const { id, value } = e.target;
-    setForm((p) => ({ ...p, [id]: value }));
+    setForm(p => ({ ...p, [id]: value }));
   };
-  const handleSelect = (name, value) => setForm((p) => ({ ...p, [name]: value, ...(name === "uf" ? { city: "" } : {}) }));
 
-  // Chamada ao backend /signup
-  const signup = async ({ name, phone, address }) => {
-    const res = await fetch(`${API_BASE_URL}/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+  const handleSelect = (name, value) => {
+    setForm(p => ({ ...p, [name]: value, ...(name === 'uf' ? { city: '' } : {}) }));
+  };
+
+  // POST direto em /user: { name, phone, address }
+  const registerUser = async ({ name, phone, address }) => {
+    const res = await fetch(`${API_BASE_URL}/user`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, phone, address })
     });
     if (!res.ok) {
-      const t = await res.text().catch(() => "");
-      const msg = t || `HTTP ${res.status}`;
-      throw new Error(msg);
+      const t = await res.text().catch(() => '');
+      throw new Error(t || `HTTP ${res.status}`);
     }
     return res.json();
   };
@@ -114,28 +120,35 @@ export default function Register() {
     e.preventDefault();
 
     // validações mínimas
-    if (!form.fullName.trim()) return toast({ title: "Nome obrigatório", variant: "destructive" });
-    if (normalizePhone(form.phone).length < 10) return toast({ title: "Telefone inválido", variant: "destructive" });
-    if (!form.uf || !form.city || !form.neighborhood || !form.cep || !form.number)
-      return toast({ title: "Complete todos os campos de endereço", variant: "destructive" });
+    if (!form.fullName.trim()) {
+      toast({ title: 'Nome obrigatório', variant: 'destructive' });
+      return;
+    }
+    if (normalizePhone(form.phone).length < 10) {
+      toast({ title: 'Telefone inválido', description: 'Inclua DDD + número.', variant: 'destructive' });
+      return;
+    }
+    if (!form.uf || !form.city || !form.neighborhood || !form.cep || !form.number) {
+      toast({ title: 'Complete o endereço', description: 'UF, Cidade, Bairro, CEP e Número são obrigatórios.', variant: 'destructive' });
+      return;
+    }
 
-    // monta address compacto p/ backend
+    // monta address compacto para o backend
     const address = `${form.neighborhood}, Nº ${form.number} — ${form.city}/${form.uf} — CEP ${form.cep}`;
 
     setIsSubmitting(true);
     try {
-      await signup({
+      await registerUser({
         name: form.fullName.trim(),
-        phone: normalizePhone(form.phone),
+        phone: normalizePhone(form.phone), // vira o id no backend
         address
       });
 
-      toast({ title: "Cadastro concluído!", description: "Agora você já pode participar do sorteio." });
-      // volta para a origem (se veio com state.next) ou home
-      const next = location.state?.next || "/";
+      toast({ title: 'Cadastro concluído!', description: 'Agora você já pode participar do sorteio.' });
+      const next = location.state?.next || '/';
       navigate(next);
     } catch (err) {
-      toast({ title: "Erro no cadastro", description: err.message || "Tente novamente.", variant: "destructive" });
+      toast({ title: 'Erro no cadastro', description: err.message || 'Tente novamente.', variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
@@ -161,11 +174,13 @@ export default function Register() {
 
             <form onSubmit={handleSubmit} className="bg-gray-800 rounded-lg shadow-md p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Nome completo */}
                 <div className="md:col-span-2">
                   <Label htmlFor="fullName" className="text-gray-100">Nome completo</Label>
                   <Input id="fullName" value={form.fullName} onChange={handleInput} required className="bg-gray-700 text-gray-100 border-gray-600" />
                 </div>
 
+                {/* Telefone */}
                 <div className="md:col-span-2">
                   <Label htmlFor="phone" className="text-gray-100">Telefone</Label>
                   <InputMask mask="(99) 99999-9999" value={form.phone} onChange={handleInput}>
@@ -173,6 +188,7 @@ export default function Register() {
                   </InputMask>
                 </div>
 
+                {/* CEP */}
                 <div>
                   <Label htmlFor="cep" className="text-gray-100">CEP</Label>
                   <InputMask mask="99999-999" value={form.cep} onChange={handleCepChange} disabled={loadingCep}>
@@ -180,35 +196,39 @@ export default function Register() {
                   </InputMask>
                 </div>
 
+                {/* UF */}
                 <div>
                   <Label className="text-gray-100">UF</Label>
-                  <Select onValueChange={(v) => handleSelect("uf", v)} value={form.uf}>
+                  <Select onValueChange={(v) => handleSelect('uf', v)} value={form.uf}>
                     <SelectTrigger className="bg-gray-700 text-gray-100 border-gray-600">
                       <SelectValue placeholder="-- UF --" />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-800 text-gray-100 border-gray-700">
-                      {ufs.map((uf) => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
+                      {ufs.map(uf => <SelectItem key={uf} value={uf}>{uf}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
 
-                <div className="md:col-span-1">
+                {/* Cidade */}
+                <div>
                   <Label className="text-gray-100">Cidade</Label>
-                  <Select onValueChange={(v) => handleSelect("city", v)} value={form.city} disabled={!form.uf}>
+                  <Select onValueChange={(v) => handleSelect('city', v)} value={form.city} disabled={!form.uf || cities.length === 0}>
                     <SelectTrigger className="bg-gray-700 text-gray-100 border-gray-600">
                       <SelectValue placeholder={!form.uf ? "Selecione a UF" : "Selecione a cidade"} />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-800 text-gray-100 border-gray-700">
-                      {cities.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      {cities.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
 
+                {/* Bairro */}
                 <div>
                   <Label htmlFor="neighborhood" className="text-gray-100">Bairro</Label>
                   <Input id="neighborhood" value={form.neighborhood} onChange={handleInput} required className="bg-gray-700 text-gray-100 border-gray-600" />
                 </div>
 
+                {/* Número */}
                 <div>
                   <Label htmlFor="number" className="text-gray-100">Número</Label>
                   <Input id="number" value={form.number} onChange={handleInput} required className="bg-gray-700 text-gray-100 border-gray-600" />
@@ -217,7 +237,7 @@ export default function Register() {
 
               <div className="flex justify-end pt-4">
                 <Button type="submit" disabled={isSubmitting} className="bg-black text-white hover:bg-gray-700 px-8 py-3 rounded-lg w-40">
-                  {isSubmitting ? <Loader className="animate-spin" /> : "Cadastrar"}
+                  {isSubmitting ? <Loader className="animate-spin" /> : 'Cadastrar'}
                 </Button>
               </div>
             </form>
