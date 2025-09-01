@@ -252,19 +252,21 @@ const PrizeDetail = () => {
           WhatsApp
         </Button>
         
-      <CheckoutDialog 
-        isOpen={isCheckoutOpen}
-        setIsOpen={setIsCheckoutOpen}
-        raffleId={id}                          // <- passar o id do sorteio
-        quantity={quantity}
-        unitPrice={prize.pricePerTicket}       // <- enviar o preço unitário
-        totalPrice={selectedPrice}
-        productName={prize.name}
-        onPaymentSuccess={(data) => {
-          const winner = findWinnerByTicket(data.winningTicket);
-          if (winner) setInstantWinner(winner);
-        }}
-      />
+    <CheckoutDialog 
+      isOpen={isCheckoutOpen} 
+      setIsOpen={setIsCheckoutOpen} 
+      raffleId={id}                          // 👈 necessário pro backend
+      unitPrice={prize.pricePerTicket}       // 👈 evita calcular por total/qty
+      quantity={quantity} 
+      totalPrice={selectedPrice}
+      productName={prize.name}
+      onPaymentSuccess={(data) => {
+        const winner = findWinnerByTicket(data.winningTicket);
+        if (winner) {
+          setInstantWinner(winner);
+        }
+      }}
+    />
 
         <WinnerAnnouncementDialog
           isOpen={!!instantWinner}
