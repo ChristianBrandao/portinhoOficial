@@ -12,10 +12,9 @@ import WinnerAnnouncementDialog from '@/components/shared/WinnerAnnouncementDial
 
 const PrizeDetail = () => {
   const { toast } = useToast();
-  const { id } = useParams(); // pode não existir se a rota não usar :id
+  const { id } = useParams();
   const { prize, findWinnerByTicket } = useAppContext();
 
-  // fallback: usa o id do prize se o param não vier
   const raffleId = prize?.id || id;
 
   const [quantity, setQuantity] = useState(10);
@@ -64,8 +63,11 @@ const PrizeDetail = () => {
 
   const titleOptions = prize.titleOptions || [];
   const winners = prize.winners || [];
-  const availablePrizes = winners.filter((w) => !w.awarded).length;
+  const availablePrizes = winners.filter((w) => w.awarded !== true).length; // só conta quando não for exatamente true
   const totalPrizes = winners.length;
+
+  // helper para o rótulo do ticket e consistência de tipos
+  const ticketLabel = (w) => String(w.ticketNumber ?? w.ticket ?? w.id ?? '');
 
   return (
     <>
@@ -214,43 +216,48 @@ const PrizeDetail = () => {
               </div>
 
               <div className="mt-4 space-y-2">
-                {winners.map((winner) => (
-                  <div
-                    key={winner.id}
-                    className={`flex items-center justify-between p-2 rounded-lg text-sm transition ${
-                      winner.awarded ? 'bg-black text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                    }`}
-                  >
-                    <span
-                      className={`font-bold px-3 py-1 rounded-full ${
-                        winner.awarded ? 'bg-black border border-white' : 'bg-gray-600'
+                {winners.map((winner) => {
+                  const isAwarded = winner.awarded === true; // só considera exatamente true
+                  const name = winner.name || '';
+                  return (
+                    <div
+                      key={winner.id}
+                      className={`flex items-center justify-between p-2 rounded-lg text-sm transition ${
+                        isAwarded ? 'bg-black text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                       }`}
                     >
-                      {winner.ticketNumber || winner.ticket || winner.id}
-                    </span>
-
-                    <span
-                      className={`flex-1 text-center ${
-                        winner.awarded ? 'text-yellow-300' : 'text-cyan-300'
-                      } font-extrabold tracking-wide text-base md:text-lg`}
-                    >
-                      {winner.prizeName || '—'}
-                    </span>
-
-                    {winner.awarded ? (
-                      <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded-md border border-emerald-500/30 bg-emerald-600/20 text-emerald-300 font-semibold">
-                          {winner.name}
-                        </span>
-                        <Trophy size={16} className="text-yellow-400" />
-                      </div>
-                    ) : (
-                      <span className="px-2 py-0.5 rounded-md bg-emerald-600 text-white font-bold text-xs border border-emerald-400">
-                        Disponível
+                      <span
+                        className={`font-bold px-3 py-1 rounded-full ${
+                          isAwarded ? 'bg-black border border-white' : 'bg-gray-600'
+                        }`}
+                      >
+                        {ticketLabel(winner)}
                       </span>
-                    )}
-                  </div>
-                ))}
+
+                      <span
+                        className={`flex-1 text-center ${
+                          isAwarded ? 'text-yellow-300' : 'text-cyan-300'
+                        } font-extrabold tracking-wide text-base md:text-lg`}
+                      >
+                        {winner.prizeName || '—'}
+                      </span>
+
+                      <div className="flex items-center gap-2">
+                        {/* nome sempre, menor; se não houver, mostra vazio */}
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-xs font-medium ${
+                            isAwarded
+                              ? 'border border-emerald-500/30 bg-emerald-600/20 text-emerald-300'
+                              : 'text-gray-400 bg-transparent border border-transparent'
+                          }`}
+                        >
+                          {name}
+                        </span>
+                        {isAwarded && <Trophy size={16} className="text-yellow-400" />}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
 
@@ -284,7 +291,6 @@ const PrizeDetail = () => {
           WhatsApp
         </Button>
 
-        {/* passa o raffleId com fallback */}
         <CheckoutDialog
           isOpen={isCheckoutOpen}
           setIsOpen={setIsCheckoutOpen}
