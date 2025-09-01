@@ -68,7 +68,7 @@ const PaymentSuccess = () => {
               <div className="bg-blue-700/50 border border-blue-600 rounded-md p-4 mb-6 text-left flex items-start gap-3">
                 <Info className="h-6 w-6 text-blue-200 mt-0.5" />
                 <div className="text-blue-100">
-                  Nenhum prêmio instantâneo nesta compra. Seus números estão valendo para os sorteios!
+                  Nenhum prêmio nesta compra
                 </div>
               </div>
             )}
