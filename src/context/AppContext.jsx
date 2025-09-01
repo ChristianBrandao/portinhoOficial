@@ -7,26 +7,47 @@ export const AppProvider = ({ children }) => {
   const [prize, setPrize] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  /* ===== Helpers ===== */
+  const normTicket = (t) => {
+    const s = String(t ?? '').replace(/\D/g, '');
+    // Ajuste o tamanho se o seu padrão não for 6 dígitos
+    return s.padStart(6, '0');
+  };
+
+  const isAwarded = (v) => {
+    // aceita boolean, number, string "true"/"1", e timestamps (awardedAt)
+    if (v instanceof Date) return true;
+    if (typeof v === 'number') return v === 1;
+    if (typeof v === 'string') return ['true', '1', 'y', 'yes'].includes(v.toLowerCase());
+    return v === true; // evita "!!v" para não marcar objetos/strings como true
+  };
+
   const pickActiveRaffle = (raffles) => {
     if (!raffles) return null;
-    // Se a API já retorna objeto único:
     if (!Array.isArray(raffles)) return raffles;
-    // Caso seja lista, escolha a primeira ou a que tiver alguma flag "active"
-    const active = raffles.find(r => r.active) || raffles[0];
+    const active = raffles.find((r) => r.active) || raffles[0];
     return active || null;
   };
 
   const normalizeInstantPrize = (p) => {
-    // Normaliza os campos para o que a UI espera
-    const ticketId = p.ticketNumber || p.ticket || p.id; // compatibilidade
+    // resolve ticket e normaliza
+    const rawTicket = p.ticketNumber ?? p.ticket ?? p.id;
+    const ticketId = normTicket(rawTicket);
+
+    // resolve flag de prêmio de forma confiável
+    const awardedFlag = isAwarded(
+      p.awarded ?? p.isAwarded ?? p.awardedAt ?? p.winnerId // qualquer indicador de premiação
+    );
+
     return {
       ...p,
-      id: ticketId,                              // garante id = número
-      ticket: ticketId,                          // facilita findWinnerByTicket
+      id: ticketId,                 // garante id consistente
+      ticket: ticketId,             // facilita buscas
+      ticketNumber: ticketId,       // mantém também em ticketNumber
       prizeName: p.prizeName ?? 'Prêmio Instantâneo',
-      awarded: !!(p.awarded ?? p.isAwarded),     // UI usa "awarded"
-      name: p.name ?? p.winnerName ?? null,      // se backend não enviar nome, fica null
-      // mantém campos originais como isAwarded, winnerId, awardedAt se vierem
+      awarded: awardedFlag,
+      name: p.name ?? p.winnerName ?? null,
+      // mantém campos originais como awardedAt, winnerId, etc.
     };
   };
 
@@ -48,7 +69,7 @@ export const AppProvider = ({ children }) => {
         ? instantPrizes.map(normalizeInstantPrize)
         : [];
 
-      // 3) Monta objeto prize esperado pelo restante do app
+      // 3) Objeto usado pela UI
       setPrize({
         id: raffle.id,
         name: raffle.name ?? raffle.title ?? 'Sorteio',
@@ -56,8 +77,8 @@ export const AppProvider = ({ children }) => {
         imageURL: raffle.imageURL ?? raffle.image ?? '',
         imageAlt: raffle.imageAlt ?? raffle.name ?? 'Imagem do sorteio',
         pricePerTicket: Number(raffle.pricePerTicket ?? raffle.unitPrice ?? 0.0),
-        titleOptions: raffle.titleOptions ?? [],   // se você tiver bundles pré-configurados
-        winners,                                   // lista normalizada
+        titleOptions: raffle.titleOptions ?? [],
+        winners,
       });
     } catch (error) {
       console.error('Failed to load app data', error);
@@ -73,15 +94,17 @@ export const AppProvider = ({ children }) => {
 
   // Marca o ticket como premiado no estado (update otimista)
   const awardPrize = useCallback((ticketId, winnerName) => {
+    const normalized = normTicket(ticketId);
     setPrize((currentPrize) => {
       if (!currentPrize) return currentPrize;
       const updatedWinners = (currentPrize.winners || []).map((w) => {
-        const idToCompare = w.ticketNumber || w.ticket || w.id;
-        if (idToCompare === ticketId) {
+        const wTicket = normTicket(w.ticketNumber ?? w.ticket ?? w.id);
+        if (wTicket === normalized) {
           return {
             ...w,
             awarded: true,
             name: winnerName || w.name || 'Vencedor',
+            awardedAt: w.awardedAt ?? new Date().toISOString(),
             date: new Date().toLocaleDateString('pt-BR'),
           };
         }
@@ -89,16 +112,17 @@ export const AppProvider = ({ children }) => {
       });
       return { ...currentPrize, winners: updatedWinners };
     });
-
-    // Opcional: recarregar depois de alguns segundos para refletir backend
-    // setTimeout(() => loadData(), 2000);
+    // Opcional: sincronizar com backend e depois chamar loadData()
   }, []);
 
   const findWinnerByTicket = useCallback((ticketId) => {
     if (!prize) return null;
-    return (prize.winners || []).find(
-      (w) => (w.ticketNumber || w.ticket || w.id) === ticketId
-    ) || null;
+    const target = normTicket(ticketId);
+    return (
+      (prize.winners || []).find(
+        (w) => normTicket(w.ticketNumber ?? w.ticket ?? w.id) === target
+      ) || null
+    );
   }, [prize]);
 
   const value = {
@@ -107,6 +131,8 @@ export const AppProvider = ({ children }) => {
     awardPrize,
     findWinnerByTicket,
     reload: loadData,
+    // exporta helpers se quiser usar no front
+    _utils: { normTicket, isAwarded },
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -29,6 +29,22 @@ const PrizeDetail = () => {
     }
   }, [prize]);
 
+  // === Helpers robustos ===
+  const isAwarded = (v) => {
+    if (v instanceof Date) return true;
+    if (typeof v === 'number') return v === 1;
+    if (typeof v === 'string') return ['true', '1', 'y', 'yes'].includes(v.toLowerCase());
+    return v === true || !!v;
+  };
+
+  const normTicket = (t) => {
+    const s = String(t ?? '').replace(/\D/g, '');
+    return s.padStart(6, '0'); // ajuste se seus bilhetes não forem de 6 dígitos
+  };
+
+  const ticketFromWinner = (w) =>
+    normTicket(w.ticketNumber ?? w.ticket ?? w.id ?? '');
+
   const handleFeatureClick = () => {
     toast({
       title: '🚧 Este recurso ainda não foi implementado—mas não se preocupe! Você pode solicitá-lo no seu próximo prompt! 🚀',
@@ -63,11 +79,9 @@ const PrizeDetail = () => {
 
   const titleOptions = prize.titleOptions || [];
   const winners = prize.winners || [];
-  const availablePrizes = winners.filter((w) => w.awarded !== true).length; // só conta quando não for exatamente true
-  const totalPrizes = winners.length;
 
-  // helper para o rótulo do ticket e consistência de tipos
-  const ticketLabel = (w) => String(w.ticketNumber ?? w.ticket ?? w.id ?? '');
+  const totalPrizes = winners.length;
+  const availablePrizes = winners.filter((w) => !isAwarded(w.awarded || w.awardedAt)).length;
 
   return (
     <>
@@ -217,43 +231,44 @@ const PrizeDetail = () => {
 
               <div className="mt-4 space-y-2">
                 {winners.map((winner) => {
-                  const isAwarded = winner.awarded === true; // só considera exatamente true
+                  const awardedFlag = isAwarded(winner.awarded || winner.awardedAt);
+                  const ticketLbl = ticketFromWinner(winner);
                   const name = winner.name || '';
+
                   return (
                     <div
-                      key={winner.id}
+                      key={ticketLbl}
                       className={`flex items-center justify-between p-2 rounded-lg text-sm transition ${
-                        isAwarded ? 'bg-black text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                        awardedFlag ? 'bg-black text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                       }`}
                     >
                       <span
                         className={`font-bold px-3 py-1 rounded-full ${
-                          isAwarded ? 'bg-black border border-white' : 'bg-gray-600'
+                          awardedFlag ? 'bg-black border border-white' : 'bg-gray-600'
                         }`}
                       >
-                        {ticketLabel(winner)}
+                        {ticketLbl}
                       </span>
 
                       <span
                         className={`flex-1 text-center ${
-                          isAwarded ? 'text-yellow-300' : 'text-cyan-300'
+                          awardedFlag ? 'text-yellow-300' : 'text-cyan-300'
                         } font-extrabold tracking-wide text-base md:text-lg`}
                       >
                         {winner.prizeName || '—'}
                       </span>
 
                       <div className="flex items-center gap-2">
-                        {/* nome sempre, menor; se não houver, mostra vazio */}
                         <span
                           className={`px-2 py-0.5 rounded-md text-xs font-medium ${
-                            isAwarded
+                            awardedFlag
                               ? 'border border-emerald-500/30 bg-emerald-600/20 text-emerald-300'
                               : 'text-gray-400 bg-transparent border border-transparent'
                           }`}
                         >
                           {name}
                         </span>
-                        {isAwarded && <Trophy size={16} className="text-yellow-400" />}
+                        {awardedFlag && <Trophy size={16} className="text-yellow-400" />}
                       </div>
                     </div>
                   );
@@ -300,8 +315,19 @@ const PrizeDetail = () => {
           totalPrice={selectedPrice}
           productName={prize.name}
           onPaymentSuccess={(data) => {
-            const winner = findWinnerByTicket(data.winningTicket);
-            if (winner) setInstantWinner(winner);
+            const t = normTicket(data.winningTicket);
+            const local = winners.find((w) => ticketFromWinner(w) === t);
+            const byCtx = local || findWinnerByTicket?.(t) || null;
+
+            if (byCtx) {
+              setInstantWinner(byCtx);
+            } else {
+              toast({
+                title: 'Bilhete premiado não localizado',
+                description: `Ticket ${t} não foi encontrado na lista local/ctx. Verifique formatação e sincronização.`,
+                variant: 'destructive',
+              });
+            }
           }}
         />
 
