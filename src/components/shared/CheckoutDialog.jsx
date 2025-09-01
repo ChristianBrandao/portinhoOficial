@@ -12,7 +12,16 @@ import QRCode from 'qrcode.react';
 import { findUserByPhone, reserveNumbersAndCreatePayment, checkPaymentStatus } from '@/services/api';
 import { useAppContext } from '@/context/AppContext';
 
-const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, totalPrice, productName, onPaymentSuccess }) => {
+const CheckoutDialog = ({
+  isOpen,
+  setIsOpen,
+  raffleId,
+  unitPrice,
+  quantity,
+  totalPrice,
+  productName,
+  onPaymentSuccess,
+}) => {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { awardPrize } = useAppContext();
@@ -22,18 +31,19 @@ const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, tota
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Dados retornados pelo backend ao criar a compra PIX
+  // Dados retornados ao criar a compra PIX
   // Esperado: { purchaseId, paymentId, copyPaste, pix_code, qr_code }
   const [paymentData, setPaymentData] = useState(null);
 
   const [timer, setTimer] = useState(600);
   const paymentCheckInterval = useRef(null);
+  const navigatingRef = useRef(false); // evita navegação dupla
 
   // Contagem regressiva (apenas no passo 3)
   useEffect(() => {
     let countdownInterval;
     if (step === 3 && timer > 0) {
-      countdownInterval = setInterval(() => setTimer(prev => prev - 1), 1000);
+      countdownInterval = setInterval(() => setTimer((prev) => prev - 1), 1000);
     } else if (timer === 0 && step === 3) {
       toast({
         title: 'Tempo esgotado!',
@@ -48,15 +58,25 @@ const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, tota
   // Polling de status enquanto no passo 3
   useEffect(() => {
     if (step === 3 && paymentData?.purchaseId) {
+      // limpa anterior, se houver
+      if (paymentCheckInterval.current) clearInterval(paymentCheckInterval.current);
+
       paymentCheckInterval.current = setInterval(async () => {
         try {
           const result = await checkPaymentStatus(paymentData.purchaseId, user);
-          // esperado: { purchaseId, status, numbers?, winningTicket?, ... }
-          if (result.status === 'paid') {
-            clearInterval(paymentCheckInterval.current);
+          // esperado: { purchaseId, status, purchasedNumbers?, winningTicket?, instantPrizeName?, ... }
+          const status = (result?.status || '').toLowerCase();
 
+          if (status === 'paid' && !navigatingRef.current) {
+            navigatingRef.current = true;
+
+            // para o polling
+            if (paymentCheckInterval.current) clearInterval(paymentCheckInterval.current);
+
+            // feedback opcional/conforme fluxo
             if (result.winningTicket) {
-              awardPrize(result.winningTicket, user.name);
+              // registra local (UI) e deixa callback externo reagir se quiser
+              awardPrize(result.winningTicket, user?.name);
               onPaymentSuccess?.(result);
             } else {
               toast({
@@ -64,8 +84,15 @@ const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, tota
                 description: 'Sua compra foi um sucesso! Boa sorte!',
                 className: 'bg-green-600 text-white',
               });
-              navigate('/pagamento-sucesso', { state: { order: result } });
             }
+
+            // NAVEGA SEMPRE (com query e também passando state)
+            navigate(
+              `/pagamento-sucesso?purchaseId=${encodeURIComponent(result.purchaseId)}`,
+              { replace: true, state: { order: result } }
+            );
+
+            // fecha o modal depois de disparar a navegação
             handleClose();
           }
         } catch {
@@ -145,6 +172,7 @@ const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, tota
     setPaymentData(null);
     setIsLoading(false);
     setTimer(300);
+    navigatingRef.current = false;
     if (paymentCheckInterval.current) clearInterval(paymentCheckInterval.current);
   };
 
@@ -171,7 +199,12 @@ const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, tota
     switch (step) {
       case 1:
         return (
-          <motion.div key="step1" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50, transition: { duration: 0.2 } }}>
+          <motion.div
+            key="step1"
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50, transition: { duration: 0.2 } }}
+          >
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-xl text-gray-100">
                 <User /> Identificação
@@ -190,8 +223,20 @@ const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, tota
                   />
                 )}
               </InputMask>
-              <Button type="submit" disabled={isLoading} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold">
-                {isLoading ? (<><Loader className="mr-2 h-4 w-4 animate-spin" /> Verificando...</>) : (<>Continuar <ArrowRight className="ml-2 h-4 w-4" /></>)}
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader className="mr-2 h-4 w-4 animate-spin" /> Verificando...
+                  </>
+                ) : (
+                  <>
+                    Continuar <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
             </form>
           </motion.div>
@@ -199,18 +244,36 @@ const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, tota
 
       case 1.1:
         return (
-          <motion.div key="step1.1" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}>
+          <motion.div
+            key="step1.1"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9, transition: { duration: 0.2 } }}
+          >
             <DialogHeader>
               <DialogTitle className="flex items-center justify-center gap-2 text-xl text-yellow-400">
                 <AlertCircle /> Usuário não encontrado
               </DialogTitle>
             </DialogHeader>
             <div className="space-y-4 pt-4 text-center">
-              <p className="text-gray-300">Não encontramos uma conta para o número <span className="font-bold">{phone}</span>.</p>
+              <p className="text-gray-300">
+                Não encontramos uma conta para o número <span className="font-bold">{phone}</span>.
+              </p>
               <p className="text-gray-400">Deseja criar uma nova conta ou tentar outro número?</p>
               <div className="flex flex-col sm:flex-row gap-4 pt-2">
-                <Button onClick={() => { setStep(1); setPhone(''); }} className="w-full bg-gray-600 hover:bg-gray-500 text-white">Tentar novamente</Button>
-                <Button onClick={handleRegisterRedirect} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold">
+                <Button
+                  onClick={() => {
+                    setStep(1);
+                    setPhone('');
+                  }}
+                  className="w-full bg-gray-600 hover:bg-gray-500 text-white"
+                >
+                  Tentar novamente
+                </Button>
+                <Button
+                  onClick={handleRegisterRedirect}
+                  className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold"
+                >
                   <UserPlus className="mr-2 h-4 w-4" /> Cadastrar
                 </Button>
               </div>
@@ -220,7 +283,12 @@ const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, tota
 
       case 2:
         return (
-          <motion.div key="step2" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50, transition: { duration: 0.2 } }}>
+          <motion.div
+            key="step2"
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50, transition: { duration: 0.2 } }}
+          >
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-xl text-gray-100">
                 <ShoppingCart /> Checkout
@@ -229,33 +297,57 @@ const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, tota
             <div className="space-y-6 pt-4">
               <div className="bg-green-800 text-green-100 p-3 rounded-md flex items-center gap-3">
                 <CheckCircle />
-                <p>Você está adquirindo <strong>{quantity}</strong> título(s) do produto <strong>{productName}</strong></p>
+                <p>
+                  Você está adquirindo <strong>{quantity}</strong> título(s) do produto{' '}
+                  <strong>{productName}</strong>
+                </p>
               </div>
               <div className="flex items-center gap-4 p-4 bg-gray-700 rounded-md">
-                <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center"><User size={32} /></div>
+                <div className="w-16 h-16 bg-gray-600 rounded-full flex items-center justify-center">
+                  <User size={32} />
+                </div>
                 <div>
                   <p className="font-bold text-lg">{user?.name}</p>
                   <p className="text-gray-400">{user?.phone}</p>
                 </div>
               </div>
               <p className="text-xs text-gray-500 text-center">
-                Ao efetuar este pagamento e confirmar a compra deste título de capitalização, declaro que li e concordo com os termos disponíveis na página da campanha.
+                Ao efetuar este pagamento e confirmar a compra deste título de capitalização, declaro que li e concordo
+                com os termos disponíveis na página da campanha.
               </p>
-              <Button onClick={handleReserve} disabled={isLoading} className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-lg h-12">
-                {isLoading ? (<><Loader className="mr-2 h-4 w-4 animate-spin" /> Reservando...</>) : (<>Concluir Reserva <ArrowRight className="ml-2 h-4 w-4" /></>)}
+              <Button
+                onClick={handleReserve}
+                disabled={isLoading}
+                className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold text-lg h-12"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader className="mr-2 h-4 w-4 animate-spin" /> Reservando...
+                  </>
+                ) : (
+                  <>
+                    Concluir Reserva <ArrowRight className="ml-2 h-4 w-4" />
+                  </>
+                )}
               </Button>
-              <button onClick={() => setStep(1)} className="w-full text-center text-cyan-400 hover:underline text-sm">Alterar conta</button>
+              <button onClick={() => setStep(1)} className="w-full text-center text-cyan-400 hover:underline text-sm">
+                Alterar conta
+              </button>
             </div>
           </motion.div>
         );
 
       case 3: {
-        // <<< ENVOLVIDO EM CHAVES PARA PERMITIR const/let
         const qrText = paymentData?.copyPaste || paymentData?.pix_code || '';
-        const qrImg  = paymentData?.qr_code; // data:image/... base64 (fallback opcional)
+        const qrImg = paymentData?.qr_code; // data:image/... base64
 
         return (
-          <motion.div key="step3" initial={{ opacity: 0, x: -50 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 50, transition: { duration: 0.2 } }}>
+          <motion.div
+            key="step3"
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 50, transition: { duration: 0.2 } }}
+          >
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-xl text-gray-100">
                 <QrCode /> Pague com PIX
@@ -264,7 +356,9 @@ const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, tota
 
             <div className="space-y-4 pt-4 text-center">
               <div className="bg-yellow-800 text-yellow-100 p-3 rounded-md">
-                <p>Sua reserva expira em: <strong>{formatTime(timer)}</strong></p>
+                <p>
+                  Sua reserva expira em: <strong>{formatTime(timer)}</strong>
+                </p>
               </div>
 
               <div className="p-4 bg-white rounded-lg inline-flex items-center justify-center min-w-[208px] min-h-[208px]">
@@ -285,12 +379,7 @@ const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, tota
               <p className="text-gray-400">Ou use o PIX Copia e Cola:</p>
 
               <div className="relative">
-                <Input
-                  readOnly
-                  value={qrText}
-                  placeholder="Carregando código PIX..."
-                  className="bg-gray-700 text-gray-200 pr-10 truncate"
-                />
+                <Input readOnly value={qrText} placeholder="Carregando código PIX..." className="bg-gray-700 text-gray-200 pr-10 truncate" />
                 <Button size="icon" variant="ghost" className="absolute right-1 top-1 h-8 w-8" onClick={copyToClipboard} disabled={!qrText}>
                   <Copy size={16} />
                 </Button>
@@ -302,7 +391,6 @@ const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, tota
                 </p>
               )}
 
-              {/* Números só aparecem após o status "paid" */}
               <p className="text-xs text-gray-500">Após o pagamento, seus números serão confirmados em alguns instantes.</p>
             </div>
           </motion.div>
