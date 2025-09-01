@@ -26,7 +26,7 @@ const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, tota
   // Esperado: { purchaseId, paymentId, copyPaste, pix_code, qr_code }
   const [paymentData, setPaymentData] = useState(null);
 
-  const [timer, setTimer] = useState(300);
+  const [timer, setTimer] = useState(600);
   const paymentCheckInterval = useRef(null);
 
   // Contagem regressiva (apenas no passo 3)
@@ -151,7 +151,7 @@ const CheckoutDialog = ({ isOpen, setIsOpen, raffleId, unitPrice, quantity, tota
   const handleClose = () => setIsOpen(false);
 
   const onDialogClose = (open) => {
-    if (!open) setTimeout(resetState, 300);
+    if (!open) setTimeout(resetState, 600);
     setIsOpen(open);
   };
 
