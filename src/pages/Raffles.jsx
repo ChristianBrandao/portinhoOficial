@@ -1,64 +1,10 @@
 import React, { useState, useEffect } from 'react';
+import { Helmet } from 'react-helmet';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import Header from '@/components/shared/Header'; // ✅ agora usa o Header real
+import { useToast } from '@/components/ui/use-toast';
 
-/* ============ mocks (Helmet, motion, Link, Button, Toast, Icon) ============ */
-const Helmet = ({ children }) => <div style={{ display: 'none' }}>{children}</div>;
-
-const motion = {
-  div: ({ children, className, ...props }) => (
-    <div className={className} {...props}>{children}</div>
-  ),
-};
-
-const Link = ({ to, children, className, ...props }) => {
-  const handleLinkClick = (e) => {
-    e.preventDefault();
-    console.log(`Navegação para: ${to}`);
-  };
-  return (
-    <a href={to} onClick={handleLinkClick} className={className} {...props}>
-      {children}
-    </a>
-  );
-};
-
-const Button = ({ children, className, onClick }) => (
-  <button className={`p-2 rounded-md ${className}`} onClick={onClick}>
-    {children}
-  </button>
-);
-
-const useToast = () => ({
-  toast: ({ title, description }) => {
-    console.log(`Toast: ${title} - ${description}`);
-    const el = document.createElement('div');
-    el.className = 'fixed bottom-4 right-4 bg-black text-white px-4 py-2 rounded-lg shadow-xl animate-fade-in-up z-50';
-    el.innerHTML = `<strong>${title}</strong><br/>${description}`;
-    document.body.appendChild(el);
-    setTimeout(() => el.remove(), 3000);
-  }
-});
-
-const Calendar = (props) => (
-  <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-       viewBox="0 0 24 24" fill="none" stroke="currentColor"
-       strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <rect width="18" height="18" x="3" y="4" rx="2" ry="2" />
-    <line x1="16" x2="16" y1="2" y2="6" />
-    <line x1="8" x2="8" y1="2" y2="6" />
-    <line x1="3" x2="21" y1="10" y2="10" />
-  </svg>
-);
-
-const Header = () => (
-  <header className="w-full bg-gray-950 p-4 border-b border-gray-800 text-white">
-    <div className="flex justify-between items-center max-w-2xl mx-auto">
-      <h1 className="text-xl font-bold">Portinho</h1>
-      <nav>
-        <Button className="bg-gray-800 hover:bg-gray-700">Login</Button>
-      </nav>
-    </div>
-  </header>
-);
 /* ============================ helpers ============================ */
 const norm = (s = '') =>
   s.toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
@@ -129,14 +75,14 @@ const Raffles = () => {
 
   const tabs = ['Ativos', 'Concluídos', 'Em breve'];
 
-  // Agora o status já vem normalizado (active/completed/upcoming)
-  const list = Array.isArray(raffles) ? raffles : [];
-  const filteredRaffles = list.filter((raffle) => {
-    if (activeTab === 'Ativos') return raffle.status === 'active';
-    if (activeTab === 'Concluídos') return raffle.status === 'completed';
-    if (activeTab === 'Em breve') return raffle.status === 'upcoming';
-    return false;
-  });
+  const filteredRaffles = Array.isArray(raffles)
+    ? raffles.filter((raffle) => {
+        if (activeTab === 'Ativos') return raffle.status === 'active';
+        if (activeTab === 'Concluídos') return raffle.status === 'completed';
+        if (activeTab === 'Em breve') return raffle.status === 'upcoming';
+        return false;
+      })
+    : [];
 
   return (
     <>
@@ -148,7 +94,7 @@ const Raffles = () => {
       </Helmet>
 
       <div className="min-h-screen bg-gray-900 flex flex-col items-center">
-        <Header />
+        <Header /> {/* ✅ agora usa o Header unificado */}
         <main className="w-full max-w-2xl px-4 py-8">
           <motion.div
             initial={{ opacity: 0, y: 50 }}
@@ -163,6 +109,7 @@ const Raffles = () => {
               </div>
             </div>
 
+            {/* Tabs */}
             <div className="p-4 border-b border-gray-700 flex items-center space-x-4">
               <span className="text-sm font-semibold text-gray-400">LISTAR</span>
               <div className="flex items-center space-x-2">
@@ -182,6 +129,7 @@ const Raffles = () => {
               </div>
             </div>
 
+            {/* Conteúdo */}
             {isLoading ? (
               <div className="p-8 text-center text-gray-400">Carregando sorteios...</div>
             ) : error ? (
