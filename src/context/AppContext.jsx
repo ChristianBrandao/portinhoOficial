@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import * as api from '@/services/api'; // <<<<< robusto contra export errado
+import { getRaffles, getInstantPrizes, getWinners } from '@/services/api';
 
 const AppContext = createContext();
 
@@ -7,34 +7,17 @@ export const AppProvider = ({ children }) => {
   const [prize, setPrize] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  /* ===== Helpers de ticket (tolerantes a formato) ===== */
-
-  const digits = (t) => String(t ?? '').replace(/\D/g, '');
-
-  const canonical = (t) => {
-    const d = digits(t);
-    if (!d) return '';
-    const n = Number(d);
-    return Number.isNaN(n) ? d : String(n);
+  /* ===== Helpers ===== */
+  const normTicket = (t) => {
+    // Normaliza para string numérica; ajuste o padStart se o seu padrão tiver outro tamanho
+    const s = String(t ?? '').replace(/\D/g, '');
+    return s.padStart(6, '0');
   };
 
-  const pad6 = (t) => digits(t).padStart(6, '0');
-  const pad7 = (t) => digits(t).padStart(7, '0');
+  // compara bilhetes ignorando zeros à esquerda / número vs string
+  const ticketEq = (a, b) => normTicket(a) === normTicket(b);
 
-  const keyVariants = (t) => {
-    const c = canonical(t);
-    const p6 = pad6(t);
-    const p7 = pad7(t);
-    return Array.from(new Set([digits(t), c, p6, p7]));
-  };
-
-  const ticketEq = (a, b) => {
-    const A = new Set(keyVariants(a));
-    const B = new Set(keyVariants(b));
-    for (const k of A) if (B.has(k)) return true;
-    return false;
-  };
-
+  // interpreta "premiado" a partir de vários formatos possíveis no payload
   const isAwarded = (v) => {
     if (v === true) return true;
     if (typeof v === 'number') return v === 1;
@@ -42,7 +25,7 @@ export const AppProvider = ({ children }) => {
     if (typeof v === 'string') {
       const s = v.trim().toLowerCase();
       if (['true', '1', 'y', 'yes'].includes(s)) return true;
-      if (/^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:/i.test(s)) return true; // ISO em awardedAt
+      if (/^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:/i.test(s)) return true; // ISO date em awardedAt
       if (s.startsWith('purchase-')) return true; // winnerId pattern
       return false;
     }
@@ -59,25 +42,25 @@ export const AppProvider = ({ children }) => {
     return active || null;
   };
 
-  const normalizeInstantPrize = (p = {}) => {
+  const normalizeInstantPrize = (p) => {
+    // resolve ticket e normaliza
     const rawTicket = p.ticketNumber ?? p.ticket ?? p.id;
-    const awardedFlag = isAwarded(
-      p.awarded ?? p.isAwarded ?? p.awardedAt ?? p.winnerId
-    );
+    const ticketId = normTicket(rawTicket);
 
-    const c = canonical(rawTicket);
-    const p6 = pad6(rawTicket);
-    const p7 = pad7(rawTicket);
+    // resolve flag de prêmio de forma confiável
+    const awardedFlag = isAwarded(
+      p.awarded ?? p.isAwarded ?? p.awardedAt ?? p.winnerId // qualquer indicador de premiação
+    );
 
     return {
       ...p,
-      id: c,
-      ticket: c,
-      ticketNumber: c,
+      id: ticketId,                 // garante id consistente
+      ticket: ticketId,             // facilita buscas
+      ticketNumber: ticketId,       // mantém também em ticketNumber
       prizeName: p.prizeName ?? 'Prêmio Instantâneo',
       awarded: awardedFlag,
       name: p.name ?? p.winnerName ?? null,
-      _ticketFaces: { canonical: c, pad6: p6, pad7: p7, raw: String(rawTicket ?? '') },
+      // mantém campos originais como awardedAt, winnerId, etc.
     };
   };
 
@@ -85,7 +68,7 @@ export const AppProvider = ({ children }) => {
     setLoading(true);
     try {
       // 1) Raffles
-      const raffles = await api.getRaffles();
+      const raffles = await getRaffles();
       const raffle = pickActiveRaffle(raffles);
       if (!raffle || !raffle.id) {
         console.warn('Nenhum sorteio ativo/encontrado em getRaffles()');
@@ -94,57 +77,43 @@ export const AppProvider = ({ children }) => {
       }
 
       // 2) Instant prizes do raffle
-      const instantPrizes = await api.getInstantPrizes(raffle.id).catch((e) => {
-        console.warn('getInstantPrizes falhou:', e?.message || e);
-        return [];
-      });
+      const instantPrizes = await getInstantPrizes(raffle.id);
       const normalizedInstant = Array.isArray(instantPrizes)
-        ? instantPrizes.map((x) => normalizeInstantPrize(x))
+        ? instantPrizes.map(normalizeInstantPrize)
         : [];
 
-      // 3) Winners por raffle (só se a função existir mesmo)
-      let winnersDoc = { winners: [] };
-      if (typeof api.getWinners === 'function') {
-        winnersDoc = await api.getWinners(raffle.id).catch((e) => {
-          console.warn('getWinners falhou:', e?.message || e);
-          return { winners: [] };
-        });
-      } else {
-        console.warn('getWinners não é uma função exportada de "@/services/api". Usando winners vazio.');
+      // 3) Winners por raffle (para enriquecer apenas os premiados)
+      let winnersDoc = null;
+      try {
+        // Espera { raffleId, winners: [...] }
+        winnersDoc = await getWinners(raffle.id);
+      } catch (e) {
+        console.warn('Falha ao carregar winners:', e?.message || e);
       }
 
-      // 4) Mapa ticket -> nome (considera todas as variações)
-      const nameByTicket = new Map();
-      const winnersArray = Array.isArray(winnersDoc?.winners) ? winnersDoc.winners : [];
-      for (const w of winnersArray) {
-        const t = w?.ticket ?? w?.ticketNumber ?? w?.id;
-        const nm = w?.winnerName || w?.name || w?.customerName || null;
-        if (!t || !nm) continue;
-        for (const k of keyVariants(t)) {
-          if (!nameByTicket.has(k)) nameByTicket.set(k, nm);
-        }
-      }
+      // 4) Mapa ticket -> nome (winnerName/name/customerName)
+      const nameByTicket = new Map(
+        (winnersDoc?.winners || []).map((w) => {
+          const tk = normTicket(w.ticket ?? w.ticketNumber ?? w.id);
+          const nm = w.winnerName || w.name || w.customerName || null;
+          return [tk, nm];
+        })
+      );
 
-      // 5) Injeta nome SOMENTE em premiados
+      // 5) Injeta nome SOMENTE se o item está premiado
       const winners = normalizedInstant.map((np) => {
-        if (!np.awarded) return { ...np, winnerName: null, name: null };
+        const injectedName = np.awarded
+          ? (nameByTicket.get(np.ticket) ?? np.name ?? null)
+          : null;
 
-        const faces = np._ticketFaces || {};
-        const candidates = Array.from(new Set([
-          np.ticket, np.id, np.ticketNumber,
-          faces.canonical, faces.pad6, faces.pad7, faces.raw
-        ])).filter(Boolean);
-
-        let injectedName = np.name ?? null;
-        for (const key of candidates) {
-          const val = nameByTicket.get(String(key));
-          if (val) { injectedName = val; break; }
-        }
-
-        return { ...np, winnerName: injectedName, name: injectedName };
+        return {
+          ...np,
+          winnerName: injectedName,  // usado no PrizeDetail
+          name: injectedName,        // compat com renderização atual
+        };
       });
 
-      // 6) Objeto da UI
+      // 6) Objeto usado pela UI
       setPrize({
         id: raffle.id,
         name: raffle.name ?? raffle.title ?? 'Sorteio',
@@ -153,9 +122,8 @@ export const AppProvider = ({ children }) => {
         imageAlt: raffle.imageAlt ?? raffle.name ?? 'Imagem do sorteio',
         pricePerTicket: Number(raffle.pricePerTicket ?? raffle.unitPrice ?? 0.0),
         titleOptions: raffle.titleOptions ?? [],
-        winners,
+        winners, // <- já enriquecidos com winnerName quando premiados
       });
-
     } catch (error) {
       console.error('Failed to load app data', error);
       setPrize(null);
@@ -164,13 +132,18 @@ export const AppProvider = ({ children }) => {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
+  // Marca o ticket como premiado no estado (update otimista)
   const awardPrize = useCallback((ticketId, winnerName) => {
+    const normalized = normTicket(ticketId);
     setPrize((currentPrize) => {
       if (!currentPrize) return currentPrize;
-      const updated = (currentPrize.winners || []).map((w) => {
-        if (ticketEq(w.ticketNumber ?? w.ticket ?? w.id, ticketId)) {
+      const updatedWinners = (currentPrize.winners || []).map((w) => {
+        const wTicket = normTicket(w.ticketNumber ?? w.ticket ?? w.id);
+        if (wTicket === normalized) {
           return {
             ...w,
             awarded: true,
@@ -182,15 +155,17 @@ export const AppProvider = ({ children }) => {
         }
         return w;
       });
-      return { ...currentPrize, winners: updated };
+      return { ...currentPrize, winners: updatedWinners };
     });
+    // Opcional: sincronizar com backend e depois chamar loadData()
   }, []);
 
   const findWinnerByTicket = useCallback((ticketId) => {
     if (!prize) return null;
+    const target = normTicket(ticketId);
     return (
       (prize.winners || []).find(
-        (w) => ticketEq(w.ticketNumber ?? w.ticket ?? w.id, ticketId)
+        (w) => normTicket(w.ticketNumber ?? w.ticket ?? w.id) === target
       ) || null
     );
   }, [prize]);
@@ -201,7 +176,8 @@ export const AppProvider = ({ children }) => {
     awardPrize,
     findWinnerByTicket,
     reload: loadData,
-    _utils: { digits, canonical, pad6, pad7, keyVariants, ticketEq, isAwarded },
+    // exporta helpers se quiser usar no front
+    _utils: { normTicket, ticketEq, isAwarded },
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
