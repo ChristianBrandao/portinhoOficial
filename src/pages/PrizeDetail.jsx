@@ -24,7 +24,12 @@ const PrizeDetail = () => {
   const [quantity, setQuantity] = useState(10);
   const [selectedPrice, setSelectedPrice] = useState(0.20);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+
+  // Pode ser um objeto ou um array de objetos (se seu WinnerAnnouncementDialog já aceita múltiplos)
   const [instantWinner, setInstantWinner] = useState(null);
+
+  // Mantém, localmente, quais tickets já devem aparecer como “Premiado” (UI otimista)
+  const [awardedLocal, setAwardedLocal] = useState([]); // array de strings normalizadas
 
   React.useEffect(() => {
     if (prize) {
@@ -249,10 +254,17 @@ const PrizeDetail = () => {
 
               <div className="mt-4 space-y-2">
                 {winners.map((winner) => {
-                  const awardedFlag = isAwarded(
+                  const ticketLbl = ticketFromWinner(winner);
+
+                  // status original
+                  const awardedFlagRemote = isAwarded(
                     winner.awarded ?? winner.isAwarded ?? winner.awardedAt ?? winner.winnerId
                   );
-                  const ticketLbl = ticketFromWinner(winner);
+
+                  // status local otimista (marcado após a compra)
+                  const awardedFlagLocal = awardedLocal.some((t) => ticketEq(t, ticketLbl));
+
+                  const awardedFlag = awardedFlagRemote || awardedFlagLocal;
                   const name = winner.name || '';
 
                   return (
@@ -344,19 +356,54 @@ const PrizeDetail = () => {
           totalPrice={selectedPrice}
           productName={prize.name}
           onPaymentSuccess={(data) => {
-            const t = normTicket(data.winningTicket);
-            const local = winners.find((w) => ticketEq(ticketFromWinner(w), t));
-            const byCtx = local || findWinnerByTicket?.(t) || null;
+            // Normaliza múltiplos tickets e prêmios
+            const tickets = Array.isArray(data.winningTickets) && data.winningTickets.length
+              ? data.winningTickets.map(normTicket)
+              : (data.winningTicket ? [normTicket(data.winningTicket)] : []);
 
-            if (byCtx) {
-              setInstantWinner(byCtx);
-            } else {
+            const instantPrizes = Array.isArray(data.instantPrizes) && data.instantPrizes.length
+              ? data.instantPrizes.map(ip => ({ ...ip, ticket: normTicket(ip.ticket) }))
+              : (data.instantPrizeName && data.winningTicket
+                  ? [{ ticket: normTicket(data.winningTicket), prizeName: data.instantPrizeName }]
+                  : []);
+
+            if (!tickets.length) {
               toast({
-                title: 'Bilhete premiado não localizado',
-                description: `Ticket ${t} não foi encontrado na lista local/ctx. Verifique formatação e sincronização.`,
-                variant: 'destructive',
+                title: 'Pagamento confirmado',
+                description: 'Nenhum prêmio nesta compra.',
               });
+              return;
             }
+
+            // Marca localmente todos os tickets como premiados (UI otimista)
+            setAwardedLocal((prev) => {
+              const set = new Set(prev);
+              tickets.forEach((t) => set.add(t));
+              return Array.from(set);
+            });
+
+            // Mapeia os vencedores para abrir o diálogo
+            const winnersLocal = tickets.map((t) => {
+              const local = (prize.winners || []).find((w) => ticketEq(ticketFromWinner(w), t));
+              const byCtx = local || findWinnerByTicket?.(t) || null;
+              if (byCtx) return byCtx;
+
+              // fallback quando ainda não refletiu no prize.winners do contexto
+              const prName = instantPrizes.find((ip) => ticketEq(ip.ticket, t))?.prizeName
+                || data.instantPrizeName
+                || 'Prêmio Instantâneo';
+              return {
+                ticket: t,
+                prizeName: prName,
+                // campos mínimos para o WinnerAnnouncementDialog
+                ticketNumber: t,
+                isAwarded: true,
+                name: '',
+              };
+            }).filter(Boolean);
+
+            // Se seu WinnerAnnouncementDialog já aceita array, passe todos; senão, o primeiro
+            setInstantWinner(winnersLocal.length > 1 ? winnersLocal : winnersLocal[0]);
           }}
         />
 
