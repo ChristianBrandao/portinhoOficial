@@ -177,7 +177,7 @@ const Raffles = () => {
             <p className="text-sm text-gray-400">
               Desenvolvido por{' '}
               <a href="#" onClick={handleFeatureClick} className="text-cyan-400 font-bold">
-                Sorteio.bet
+                toprifa.bet
               </a>
             </p>
           </div>

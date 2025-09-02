@@ -80,7 +80,7 @@ function Home() {
             </Link>
           </motion.div>
            <div className="text-center mt-8">
-              <p className="text-sm text-gray-400">Desenvolvido por <a href="#" onClick={handleFeatureClick} className="text-cyan-400 font-bold">Sorteio.bet</a></p>
+              <p className="text-sm text-gray-400">Desenvolvido por <a href="#" onClick={handleFeatureClick} className="text-cyan-400 font-bold">toprifa.bet</a></p>
            </div>
         </main>
       </div>
