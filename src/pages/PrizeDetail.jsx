@@ -1,3 +1,4 @@
+// src/pages/PrizeDetail.jsx
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Helmet } from 'react-helmet';
@@ -13,7 +14,10 @@ import WinnerAnnouncementDialog from '@/components/shared/WinnerAnnouncementDial
 const PrizeDetail = () => {
   const { toast } = useToast();
   const { id } = useParams();
-  const { prize, findWinnerByTicket } = useAppContext();
+  const { prize, findWinnerByTicket, _utils } = useAppContext();
+
+  // === helpers centralizados do contexto ===
+  const { isAwarded, normTicket, ticketEq } = _utils;
 
   const raffleId = prize?.id || id;
 
@@ -29,25 +33,14 @@ const PrizeDetail = () => {
     }
   }, [prize]);
 
-  // === Helpers robustos ===
-  const isAwarded = (v) => {
-    if (v instanceof Date) return true;
-    if (typeof v === 'number') return v === 1;
-    if (typeof v === 'string') return ['true', '1', 'y', 'yes'].includes(v.toLowerCase());
-    return v === true || !!v;
-  };
-
-  const normTicket = (t) => {
-    const s = String(t ?? '').replace(/\D/g, '');
-    return s.padStart(6, '0'); // ajuste se seus bilhetes não forem de 6 dígitos
-  };
-
+  // bilhete (string) a partir de um item de winners/instantprizes
   const ticketFromWinner = (w) =>
     normTicket(w.ticketNumber ?? w.ticket ?? w.id ?? '');
 
   const handleFeatureClick = () => {
     toast({
-      title: '🚧 Este recurso ainda não foi implementado—mas não se preocupe! Você pode solicitá-lo no seu próximo prompt! 🚀',
+      title:
+        '🚧 Este recurso ainda não foi implementado—mas não se preocupe! Você pode solicitá-lo no seu próximo prompt! 🚀',
     });
   };
 
@@ -56,7 +49,9 @@ const PrizeDetail = () => {
     setSelectedPrice(price);
     toast({
       title: 'Seleção atualizada!',
-      description: `Você selecionou ${titles} títulos por R$ ${price.toFixed(2).replace('.', ',')}.`,
+      description: `Você selecionou ${titles} títulos por R$ ${price
+        .toFixed(2)
+        .replace('.', ',')}.`,
     });
   };
 
@@ -80,8 +75,11 @@ const PrizeDetail = () => {
   const titleOptions = prize.titleOptions || [];
   const winners = prize.winners || [];
 
+  // total e disponíveis (usando detecção robusta)
   const totalPrizes = winners.length;
-  const availablePrizes = winners.filter((w) => !isAwarded(w.awarded || w.awardedAt)).length;
+  const availablePrizes = winners.filter(
+    (w) => !isAwarded(w.awarded ?? w.isAwarded ?? w.awardedAt ?? w.winnerId)
+  ).length;
 
   return (
     <>
@@ -89,22 +87,34 @@ const PrizeDetail = () => {
         <title>Detalhes do Prêmio - {prize.name}</title>
         <meta
           name="description"
-          content={`Participe do sorteio ${prize.name} por apenas R$ ${prize.pricePerTicket.toFixed(2)}.`}
+          content={`Participe do sorteio ${prize.name} por apenas R$ ${prize.pricePerTicket.toFixed(
+            2
+          )}.`}
         />
         <meta property="og:title" content={`Detalhes do Prêmio - ${prize.name}`} />
         <meta
           property="og:description"
-          content={`Participe do sorteio ${prize.name} por apenas R$ ${prize.pricePerTicket.toFixed(2)}.`}
+          content={`Participe do sorteio ${prize.name} por apenas R$ ${prize.pricePerTicket.toFixed(
+            2
+          )}.`}
         />
       </Helmet>
 
       <div className="min-h-screen bg-gray-900 flex flex-col items-center">
         <Header />
         <main className="w-full max-w-2xl px-4 py-8">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
             {/* CARD DO PRÊMIO */}
             <div className="bg-gray-800 rounded-lg shadow-md overflow-hidden mb-8">
-              <img alt={prize.imageAlt} className="w-full h-auto object-cover" src={prize.imageURL} />
+              <img
+                alt={prize.imageAlt}
+                className="w-full h-auto object-cover"
+                src={prize.imageURL}
+              />
               <div className="p-4 space-y-1">
                 <h2 className="text-xl font-bold text-gray-100">{prize.name}</h2>
                 <p className="text-gray-400 text-base">{prize.description}</p>
@@ -152,7 +162,9 @@ const PrizeDetail = () => {
                       </span>
                     )}
                     <span className="text-2xl font-extrabold">+{option.titles}</span>
-                    <span className="text-sm">R$ {option.price.toFixed(2).replace('.', ',')}</span>
+                    <span className="text-sm">
+                      R$ {option.price.toFixed(2).replace('.', ',')}
+                    </span>
                     <span className="text-xs mt-2 uppercase">Selecionar</span>
                   </motion.div>
                 ))}
@@ -199,7 +211,10 @@ const PrizeDetail = () => {
                   className="bg-cyan-500 text-black font-bold text-lg px-6 py-3 rounded-lg hover:bg-cyan-400"
                   onClick={startCheckout}
                 >
-                  Participar <span className="ml-2">R$ {selectedPrice.toFixed(2).replace('.', ',')}</span>
+                  Participar{' '}
+                  <span className="ml-2">
+                    R$ {selectedPrice.toFixed(2).replace('.', ',')}
+                  </span>
                 </Button>
               </div>
             </div>
@@ -231,7 +246,9 @@ const PrizeDetail = () => {
 
               <div className="mt-4 space-y-2">
                 {winners.map((winner) => {
-                  const awardedFlag = isAwarded(winner.awarded || winner.awardedAt);
+                  const awardedFlag = isAwarded(
+                    winner.awarded ?? winner.isAwarded ?? winner.awardedAt ?? winner.winnerId
+                  );
                   const ticketLbl = ticketFromWinner(winner);
                   const name = winner.name || '';
 
@@ -239,7 +256,9 @@ const PrizeDetail = () => {
                     <div
                       key={ticketLbl}
                       className={`flex items-center justify-between p-2 rounded-lg text-sm transition ${
-                        awardedFlag ? 'bg-black text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                        awardedFlag
+                          ? 'bg-black text-white'
+                          : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                       }`}
                     >
                       <span
@@ -280,8 +299,8 @@ const PrizeDetail = () => {
             <div className="bg-gray-800 rounded-lg shadow-sm p-4 text-gray-400 space-y-3 h-48 overflow-y-auto text-sm">
               <p className="font-bold">Proibido a venda para menores de 18 anos!</p>
               <p>
-                Ação totalmente instantânea, achando qualquer bilhete premiado disponível você recebe uma ligação e
-                recebe seus prêmios!
+                Ação totalmente instantânea, achando qualquer bilhete premiado disponível você
+                recebe uma ligação e recebe seus prêmios!
               </p>
               <p>Qualquer dúvida ou problema chamar no suporte via WhatsApp.</p>
               <p>Boa sorte!</p>
@@ -316,7 +335,7 @@ const PrizeDetail = () => {
           productName={prize.name}
           onPaymentSuccess={(data) => {
             const t = normTicket(data.winningTicket);
-            const local = winners.find((w) => ticketFromWinner(w) === t);
+            const local = winners.find((w) => ticketEq(ticketFromWinner(w), t));
             const byCtx = local || findWinnerByTicket?.(t) || null;
 
             if (byCtx) {

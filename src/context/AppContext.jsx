@@ -14,12 +14,25 @@ export const AppProvider = ({ children }) => {
     return s.padStart(6, '0');
   };
 
+  // compara bilhetes ignorando zeros à esquerda / número vs string
+  const ticketEq = (a, b) => normTicket(a) === normTicket(b);
+
+
   const isAwarded = (v) => {
-    // aceita boolean, number, string "true"/"1", e timestamps (awardedAt)
-    if (v instanceof Date) return true;
+    if (v === true) return true;
     if (typeof v === 'number') return v === 1;
-    if (typeof v === 'string') return ['true', '1', 'y', 'yes'].includes(v.toLowerCase());
-    return v === true; // evita "!!v" para não marcar objetos/strings como true
+    if (v instanceof Date) return true;
+    if (typeof v === 'string') {
+      const s = v.trim().toLowerCase();
+      if (['true', '1', 'y', 'yes'].includes(s)) return true;
+      if (/^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:/i.test(s)) return true; // ISO date in awardedAt
+      if (s.startsWith('purchase-')) return true; // winnerId pattern
+      return false;
+    }
+    if (v && typeof v === 'object') {
+      return !!(v.awarded || v.awardedAt || v.winnerId || v.isAwarded);
+    }
+    return false;
   };
 
   const pickActiveRaffle = (raffles) => {
@@ -132,7 +145,7 @@ export const AppProvider = ({ children }) => {
     findWinnerByTicket,
     reload: loadData,
     // exporta helpers se quiser usar no front
-    _utils: { normTicket, isAwarded },
+    _utils: { normTicket, ticketEq, isAwarded },
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

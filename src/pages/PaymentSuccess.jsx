@@ -5,11 +5,14 @@ import { motion } from 'framer-motion';
 import { CheckCircle, Award, Info, ArrowRight } from 'lucide-react';
 import Header from '@/components/shared/Header';
 import { Button } from '@/components/ui/button';
+import { useAppContext } from '@/context/AppContext';
 
 const PaymentSuccess = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const order = location.state?.order;
+  const { _utils } = useAppContext();
+  const { normTicket, ticketEq } = _utils;
 
   React.useEffect(() => {
     if (!order) navigate('/');
@@ -17,9 +20,10 @@ const PaymentSuccess = () => {
 
   if (!order) return null;
 
-  const numbers = Array.isArray(order.purchasedNumbers) ? order.purchasedNumbers : [];
+  const numbers = Array.isArray(order.purchasedNumbers) ? order.purchasedNumbers.map(normTicket) : [];
   const reservationId = order.reservationId || order.purchaseId || order.id;
-  const won = !!order.winningTicket;
+  const winningTicket = order.winningTicket ? normTicket(order.winningTicket) : null;
+  const won = !!(winningTicket && numbers.some((n) => ticketEq(n, winningTicket)));
   const prizeName = order.instantPrizeName || 'Prêmio Instantâneo';
 
   return (
@@ -93,8 +97,7 @@ const PaymentSuccess = () => {
                       key={num}
                       className={
                         'px-3 py-1 rounded-md font-mono text-sm shadow-md ' +
-                        (won && num === order.winningTicket
-                          ? 'bg-green-600 text-white'
+                        (won && ticketEq(num, winningTicket) ? 'bg-green-600 text-white'
                           : 'bg-cyan-700 text-cyan-100')
                       }
                     >

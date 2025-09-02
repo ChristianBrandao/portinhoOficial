@@ -68,33 +68,36 @@ const CheckoutDialog = ({
           const status = (result?.status || '').toLowerCase();
 
           if (status === 'paid' && !navigatingRef.current) {
-            navigatingRef.current = true;
+  navigatingRef.current = true;
+  if (paymentCheckInterval.current) clearInterval(paymentCheckInterval.current);
 
-            // para o polling
-            if (paymentCheckInterval.current) clearInterval(paymentCheckInterval.current);
+  // Backfill rápido
+  let finalResult = result;
+  if (!result.winningTicket) {
+    try {
+      await new Promise((r) => setTimeout(r, 1200));
+      finalResult = await checkPaymentStatus(paymentData?.purchaseId || result.purchaseId, user);
+    } catch {}
+  }
 
-            // feedback opcional/conforme fluxo
-            if (result.winningTicket) {
-              // registra local (UI) e deixa callback externo reagir se quiser
-              awardPrize(result.winningTicket, user?.name);
-              onPaymentSuccess?.(result);
-            } else {
-              toast({
-                title: 'Pagamento Confirmado!',
-                description: 'Sua compra foi um sucesso! Boa sorte!',
-                className: 'bg-green-600 text-white',
-              });
-            }
+  if (finalResult.winningTicket) {
+    awardPrize(finalResult.winningTicket, user?.name);
+    onPaymentSuccess?.(finalResult);
+  } else {
+    toast({
+      title: 'Pagamento Confirmado!',
+      description: 'Sua compra foi um sucesso! Boa sorte!',
+      className: 'bg-green-600 text-white',
+    });
+  }
 
-            // NAVEGA SEMPRE (com query e também passando state)
-            navigate(
-              `/pagamento-sucesso?purchaseId=${encodeURIComponent(result.purchaseId)}`,
-              { replace: true, state: { order: result } }
-            );
-
-            // fecha o modal depois de disparar a navegação
-            handleClose();
-          }
+  // navega uma única vez levando o objeto final
+  navigate(
+    `/pagamento-sucesso?purchaseId=${encodeURIComponent(finalResult.purchaseId || result.purchaseId)}`,
+    { replace: true, state: { order: finalResult } }
+  );
+  handleClose();
+}
         } catch {
           // silencioso
         }
