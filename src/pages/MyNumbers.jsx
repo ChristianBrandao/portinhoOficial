@@ -31,6 +31,10 @@ function addDays(base, delta) {
   return d;
 }
 
+// util para comparar tickets normalizando (com/sem zero à esquerda)
+const pad6 = (x) => String(x).padStart(6, '0');
+const ticketEq = (a, b) => pad6(a) === pad6(b);
+
 const MeusNumeros = () => {
   const { toast } = useToast();
 
@@ -121,10 +125,14 @@ const MeusNumeros = () => {
 
   const totals = useMemo(() => {
     const list = filtered;
+    const countWins = (p) => {
+      if (Array.isArray(p.winningTickets) && p.winningTickets.length) return p.winningTickets.length;
+      return p.winningTicket ? 1 : 0;
+    };
     return {
       purchases: list.length,
       numbers: list.reduce((acc, p) => acc + (p.numbers?.length || 0), 0),
-      winners: list.reduce((acc, p) => acc + (p.winningTicket ? 1 : 0), 0),
+      winners: list.reduce((acc, p) => acc + countWins(p), 0),
     };
   }, [filtered]);
 
@@ -296,66 +304,93 @@ const MeusNumeros = () => {
                   <p className="mt-2 text-sm">Ajuste o filtro de datas ou limpe os filtros.</p>
                 </div>
               ) : (
-                filtered.map((p) => (
-                  <div key={p.purchaseId} className="bg-gray-800 rounded-lg p-5">
-                    <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
-                      <div>
-                        <div className="text-sm text-gray-400">Produto</div>
-                        <div className="text-lg font-semibold text-gray-100">
-                          {p.productName || p.raffleId}
+                filtered.map((p) => {
+                  // normalização (compat + múltiplos)
+                  const winningTickets = Array.isArray(p.winningTickets) && p.winningTickets.length
+                    ? p.winningTickets.map(String)
+                    : (p.winningTicket ? [String(p.winningTicket)] : []);
+
+                  const instantPrizes = Array.isArray(p.instantPrizes) && p.instantPrizes.length
+                    ? p.instantPrizes
+                    : (p.instantPrizeName && p.winningTicket
+                        ? [{ ticket: String(p.winningTicket), prizeName: p.instantPrizeName }]
+                        : []);
+
+                  return (
+                    <div key={p.purchaseId} className="bg-gray-800 rounded-lg p-5">
+                      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3">
+                        <div>
+                          <div className="text-sm text-gray-400">Produto</div>
+                          <div className="text-lg font-semibold text-gray-100">
+                            {p.productName || p.raffleId}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 md:text-right">
+                          <div className="flex items-center gap-2 justify-start md:justify-end text-gray-300">
+                            <Receipt className="h-4 w-4 text-gray-400" />
+                            <span className="font-mono text-xs">{p.purchaseId}</span>
+                          </div>
+                          <div className="flex items-center gap-2 justify-start md:justify-end text-gray-300">
+                            <CalendarClock className="h-4 w-4 text-gray-400" />
+                            <span className="text-xs">
+                              {new Date(p.paidAt || p.createdAt || Date.now()).toLocaleString('pt-BR')}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 md:text-right">
-                        <div className="flex items-center gap-2 justify-start md:justify-end text-gray-300">
-                          <Receipt className="h-4 w-4 text-gray-400" />
-                          <span className="font-mono text-xs">{p.purchaseId}</span>
-                        </div>
-                        <div className="flex items-center gap-2 justify-start md:justify-end text-gray-300">
-                          <CalendarClock className="h-4 w-4 text-gray-400" />
-                          <span className="text-xs">
-                            {new Date(p.paidAt || p.createdAt || Date.now()).toLocaleString('pt-BR')}
-                          </span>
+                      <div className="mt-4">
+                        <div className="text-sm text-gray-400 mb-2">Números</div>
+                        <div className="flex flex-wrap gap-2">
+                          {(p.numbers ?? []).length === 0 && (
+                            <span className="text-gray-500 text-sm">— nenhum número nesta compra —</span>
+                          )}
+                          {(p.numbers ?? []).map((n) => (
+                            <span
+                              key={n}
+                              className="inline-flex items-center gap-1 bg-cyan-700 text-white px-3 py-1 rounded-lg font-mono text-sm shadow"
+                            >
+                              <Hash className="h-3 w-3 opacity-80" /> {n}
+                            </span>
+                          ))}
                         </div>
                       </div>
+
+                      {(winningTickets.length > 0) && (
+                        <div className="mt-4 bg-emerald-900/30 border border-emerald-700 rounded-lg p-3 text-emerald-300">
+                          <div className="flex items-center gap-2 font-semibold">
+                            <Trophy className="h-5 w-5 text-yellow-300" />
+                            {winningTickets.length > 1
+                              ? 'Você foi contemplado em vários bilhetes!'
+                              : 'Você foi contemplado!'}
+                          </div>
+
+                          {/* Lista 1 ou N tickets + nomes dos prêmios quando houver */}
+                          <div className="mt-2 text-sm space-y-1">
+                            {winningTickets.map((t) => {
+                              const prizeName =
+                                instantPrizes.find((ip) => ticketEq(ip.ticket, t))?.prizeName
+                                || p.instantPrizeName
+                                || 'Prêmio Instantâneo';
+                              return (
+                                <div key={t}>
+                                  Ticket:&nbsp;
+                                  <span className="font-mono text-emerald-200">{t}</span>
+                                  {prizeName ? (
+                                    <>
+                                      &nbsp;— <span className="font-semibold">{prizeName}</span>
+                                    </>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
                     </div>
-
-                    <div className="mt-4">
-                      <div className="text-sm text-gray-400 mb-2">Números</div>
-                      <div className="flex flex-wrap gap-2">
-                        {(p.numbers ?? []).length === 0 && (
-                          <span className="text-gray-500 text-sm">— nenhum número nesta compra —</span>
-                        )}
-                        {(p.numbers ?? []).map((n) => (
-                          <span
-                            key={n}
-                            className="inline-flex items-center gap-1 bg-cyan-700 text-white px-3 py-1 rounded-lg font-mono text-sm shadow"
-                          >
-                            <Hash className="h-3 w-3 opacity-80" /> {n}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-
-                    {p.winningTicket && (
-                      <div className="mt-4 bg-emerald-900/30 border border-emerald-700 rounded-lg p-3 text-emerald-300">
-                        <div className="flex items-center gap-2 font-semibold">
-                          <Trophy className="h-5 w-5 text-yellow-300" />
-                          Você foi contemplado!
-                        </div>
-                        <div className="mt-1 text-sm">
-                          Ticket:&nbsp;
-                          <span className="font-mono text-emerald-200">{p.winningTicket}</span>
-                          {p.instantPrizeName ? (
-                            <>
-                              &nbsp;— <span className="font-semibold">{p.instantPrizeName}</span>
-                            </>
-                          ) : null}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ))
+                  );
+                })
               )}
             </motion.div>
           )}

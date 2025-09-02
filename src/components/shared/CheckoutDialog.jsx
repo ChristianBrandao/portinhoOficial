@@ -80,9 +80,26 @@ const CheckoutDialog = ({
     } catch {}
   }
 
-  if (finalResult.winningTicket) {
-    awardPrize(finalResult.winningTicket, user?.name);
-    onPaymentSuccess?.(finalResult);
+  // Normaliza múltiplos prêmios mantendo compat legada
+  const tickets = Array.isArray(finalResult.winningTickets)
+    ? finalResult.winningTickets.map(String)
+    : (finalResult.winningTicket ? [String(finalResult.winningTicket)] : []);
+  const prizes = Array.isArray(finalResult.instantPrizes)
+    ? finalResult.instantPrizes
+    : (finalResult.instantPrizeName && finalResult.winningTicket
+        ? [{ ticket: String(finalResult.winningTicket), prizeName: finalResult.instantPrizeName }]
+        : []);
+
+  if (tickets.length) {
+    // Anuncia ao menos o primeiro na UI atual
+    awardPrize(tickets[0], user?.name);
+    onPaymentSuccess?.({
+      ...finalResult,
+      winningTicket: tickets[0],                 // legado para telas antigas
+      instantPrizeName: prizes[0]?.prizeName ?? finalResult.instantPrizeName ?? 'Prêmio Instantâneo',
+      winningTickets: tickets,                   // novos
+      instantPrizes: prizes,
+    });
   } else {
     toast({
       title: 'Pagamento Confirmado!',

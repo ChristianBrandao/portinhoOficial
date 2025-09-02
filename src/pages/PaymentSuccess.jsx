@@ -22,9 +22,23 @@ const PaymentSuccess = () => {
 
   const numbers = Array.isArray(order.purchasedNumbers) ? order.purchasedNumbers.map(normTicket) : [];
   const reservationId = order.reservationId || order.purchaseId || order.id;
-  const winningTicket = order.winningTicket ? normTicket(order.winningTicket) : null;
-  const won = !!(winningTicket && numbers.some((n) => ticketEq(n, winningTicket)));
-  const prizeName = order.instantPrizeName || 'Prêmio Instantâneo';
+
+  // Normalização (compat + múltiplos)
+  const winningTickets = Array.isArray(order.winningTickets) && order.winningTickets.length
+    ? order.winningTickets.map(normTicket)
+    : (order.winningTicket ? [normTicket(order.winningTicket)] : []);
+
+  const instantPrizes = Array.isArray(order.instantPrizes) && order.instantPrizes.length
+    ? order.instantPrizes.map(ip => ({ ...ip, ticket: normTicket(ip.ticket) }))
+    : (order.instantPrizeName && order.winningTicket
+        ? [{ ticket: normTicket(order.winningTicket), prizeName: order.instantPrizeName }]
+        : []);
+
+  const won = winningTickets.some((t) => numbers.some((n) => ticketEq(n, t)));
+  const firstPrizeName = instantPrizes[0]?.prizeName || order.instantPrizeName || 'Prêmio Instantâneo';
+
+  // helper p/ saber se um número foi vencedor
+  const isWinningNumber = (num) => winningTickets.some((t) => ticketEq(t, num));
 
   return (
     <>
@@ -55,25 +69,45 @@ const PaymentSuccess = () => {
             <h1 className="text-3xl font-bold text-gray-100 mb-2">Pagamento Confirmado!</h1>
             <p className="text-gray-400 mb-6">Sua compra foi realizada com sucesso.</p>
 
-            {/* Resultado do prêmio instantâneo */}
+            {/* Resultado do(s) prêmio(s) instantâneo(s) */}
             {won ? (
               <div className="bg-green-700/70 border border-green-600 rounded-md p-4 mb-6 text-left flex items-start gap-3">
                 <Award className="h-6 w-6 text-green-300 mt-0.5" />
                 <div>
-                  <p className="text-green-100 font-semibold">
-                    🎉 Parabéns! Você foi contemplado no {prizeName}.
-                  </p>
-                  <p className="text-green-100/90 mt-1">
-                    Número vencedor: <span className="font-mono font-bold">{order.winningTicket}</span>
-                  </p>
+                  {winningTickets.length <= 1 ? (
+                    <>
+                      <p className="text-green-100 font-semibold">
+                        🎉 Parabéns! Você foi contemplado no {firstPrizeName}.
+                      </p>
+                      <p className="text-green-100/90 mt-1">
+                        Número vencedor:{' '}
+                        <span className="font-mono font-bold">{winningTickets[0]}</span>
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-green-100 font-semibold">
+                        🎉 Parabéns! Você foi contemplado em {winningTickets.length} bilhetes:
+                      </p>
+                      <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {winningTickets.map((t) => {
+                          const prize = instantPrizes.find((ip) => ticketEq(ip.ticket, t))?.prizeName || firstPrizeName;
+                          return (
+                            <li key={t} className="text-green-100/90">
+                              <span className="font-mono font-bold">{t}</span>
+                              {prize ? <span className="opacity-90"> — {prize}</span> : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    </>
+                  )}
                 </div>
               </div>
             ) : (
               <div className="bg-blue-700/50 border border-blue-600 rounded-md p-4 mb-6 text-left flex items-start gap-3">
                 <Info className="h-6 w-6 text-blue-200 mt-0.5" />
-                <div className="text-blue-100">
-                  Nenhum prêmio nesta compra
-                </div>
+                <div className="text-blue-100">Nenhum prêmio nesta compra</div>
               </div>
             )}
 
@@ -97,8 +131,7 @@ const PaymentSuccess = () => {
                       key={num}
                       className={
                         'px-3 py-1 rounded-md font-mono text-sm shadow-md ' +
-                        (won && ticketEq(num, winningTicket) ? 'bg-green-600 text-white'
-                          : 'bg-cyan-700 text-cyan-100')
+                        (won && isWinningNumber(num) ? 'bg-green-600 text-white' : 'bg-cyan-700 text-cyan-100')
                       }
                     >
                       {num}
