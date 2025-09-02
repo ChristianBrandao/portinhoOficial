@@ -19,6 +19,12 @@ const PrizeDetail = () => {
   // === helpers centralizados do contexto ===
   const { isAwarded, normTicket, ticketEq } = _utils;
 
+  // helper: devolve os 2 primeiros nomes de uma string
+  const twoNames = (s) => {
+    const parts = String(s || '').trim().split(/\s+/);
+    return parts.slice(0, 2).join(' ') || 'Ganhador';
+  };
+
   const raffleId = prize?.id || id;
 
   const [quantity, setQuantity] = useState(10);
@@ -265,7 +271,6 @@ const PrizeDetail = () => {
                   const awardedFlagLocal = awardedLocal.some((t) => ticketEq(t, ticketLbl));
 
                   const awardedFlag = awardedFlagRemote || awardedFlagLocal;
-                  const name = winner.name || '';
 
                   return (
                     <div
@@ -295,11 +300,14 @@ const PrizeDetail = () => {
                         {winner.prizeName || '—'}
                       </span>
 
-                      {/* Status lateral */}
+                      {/* Status lateral: quando premiado, mostra 2 primeiros nomes; senão, “Disponível” */}
                       <div className="flex items-center gap-2">
                         {awardedFlag ? (
                           <div className="flex items-center gap-1 text-yellow-300 font-semibold">
-                            <Trophy size={18} /> <span className="text-sm">Premiado</span>
+                            <Trophy size={18} />
+                            <span className="text-sm">
+                              {twoNames(winner.name || winner.customerName || '')}
+                            </span>
                           </div>
                         ) : (
                           <div className="flex items-center gap-1 text-emerald-400 font-medium">
