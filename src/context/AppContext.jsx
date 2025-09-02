@@ -7,17 +7,41 @@ export const AppProvider = ({ children }) => {
   const [prize, setPrize] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  /* ===== Helpers ===== */
-  const normTicket = (t) => {
-    // Normaliza para string numérica; ajuste o padStart se o seu padrão tiver outro tamanho
-    const s = String(t ?? '').replace(/\D/g, '');
-    return s.padStart(6, '0');
+  /* ===== Helpers de ticket (super tolerantes a formato) ===== */
+
+  // Só dígitos
+  const digits = (t) => String(t ?? '').replace(/\D/g, '');
+
+  // "canônico" = sem zeros à esquerda (Number->String), preserva "0" se vazio
+  const canonical = (t) => {
+    const d = digits(t);
+    if (!d) return '';
+    const n = Number(d);
+    // se for NaN mantém string original, mas em geral vira "3", "7384921", etc.
+    return Number.isNaN(n) ? d : String(n);
   };
 
-  // compara bilhetes ignorando zeros à esquerda / número vs string
-  const ticketEq = (a, b) => normTicket(a) === normTicket(b);
+  const pad6 = (t) => digits(t).padStart(6, '0'); // "3" -> "000003"
+  const pad7 = (t) => digits(t).padStart(7, '0'); // "3" -> "0000003"
 
-  // interpreta "premiado" a partir de vários formatos possíveis no payload
+  // Todas as chaves equivalentes a um ticket (sem/6/7)
+  const keyVariants = (t) => {
+    const c = canonical(t);      // "3"  | "7384921"
+    const p6 = pad6(t);          // "000003" | "7384921" (se já >= 7 dígitos, fica igual)
+    const p7 = pad7(t);          // "0000003" | "7384921"
+    // Usa Set pra evitar duplicadas
+    return Array.from(new Set([digits(t), c, p6, p7]));
+  };
+
+  // comparação ampla
+  const ticketEq = (a, b) => {
+    const A = new Set(keyVariants(a));
+    const B = new Set(keyVariants(b));
+    for (const k of A) if (B.has(k)) return true;
+    return false;
+  };
+
+  // interpreta "premiado" a partir de vários formatos possíveis
   const isAwarded = (v) => {
     if (v === true) return true;
     if (typeof v === 'number') return v === 1;
@@ -25,7 +49,7 @@ export const AppProvider = ({ children }) => {
     if (typeof v === 'string') {
       const s = v.trim().toLowerCase();
       if (['true', '1', 'y', 'yes'].includes(s)) return true;
-      if (/^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:/i.test(s)) return true; // ISO date em awardedAt
+      if (/^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:/i.test(s)) return true; // ISO em awardedAt
       if (s.startsWith('purchase-')) return true; // winnerId pattern
       return false;
     }
@@ -42,25 +66,30 @@ export const AppProvider = ({ children }) => {
     return active || null;
   };
 
+  // Normaliza um item vindo do /instantprizes
   const normalizeInstantPrize = (p) => {
-    // resolve ticket e normaliza
     const rawTicket = p.ticketNumber ?? p.ticket ?? p.id;
-    const ticketId = normTicket(rawTicket);
-
-    // resolve flag de prêmio de forma confiável
     const awardedFlag = isAwarded(
-      p.awarded ?? p.isAwarded ?? p.awardedAt ?? p.winnerId // qualquer indicador de premiação
+      p.awarded ?? p.isAwarded ?? p.awardedAt ?? p.winnerId
     );
+
+    // Mantém várias faces do ticket no objeto (útil pra debug/merge)
+    const c = canonical(rawTicket);
+    const p6 = pad6(rawTicket);
+    const p7 = pad7(rawTicket);
 
     return {
       ...p,
-      id: ticketId,                 // garante id consistente
-      ticket: ticketId,             // facilita buscas
-      ticketNumber: ticketId,       // mantém também em ticketNumber
+      // chaves "oficiais" usadas pela UI
+      id: c,                 // canônico
+      ticket: c,
+      ticketNumber: c,
       prizeName: p.prizeName ?? 'Prêmio Instantâneo',
       awarded: awardedFlag,
       name: p.name ?? p.winnerName ?? null,
-      // mantém campos originais como awardedAt, winnerId, etc.
+
+      // faces auxiliares (não usadas na UI, mas ajudam no merge)
+      _ticketFaces: { canonical: c, pad6: p6, pad7: p7, raw: String(rawTicket ?? '') },
     };
   };
 
@@ -85,31 +114,48 @@ export const AppProvider = ({ children }) => {
       // 3) Winners por raffle (para enriquecer apenas os premiados)
       let winnersDoc = null;
       try {
-        // Espera { raffleId, winners: [...] }
-        winnersDoc = await getWinners(raffle.id);
+        winnersDoc = await getWinners(raffle.id); // { raffleId, winners: [...] }
       } catch (e) {
         console.warn('Falha ao carregar winners:', e?.message || e);
       }
 
-      // 4) Mapa ticket -> nome (winnerName/name/customerName)
-      const nameByTicket = new Map(
-        (winnersDoc?.winners || []).map((w) => {
-          const tk = normTicket(w.ticket ?? w.ticketNumber ?? w.id);
-          const nm = w.winnerName || w.name || w.customerName || null;
-          return [tk, nm];
-        })
-      );
+      // 4) Mapa ticket -> nome (todas as variações mapeadas!)
+      const nameByTicket = new Map();
+      for (const w of (winnersDoc?.winners || [])) {
+        const t = w.ticket ?? w.ticketNumber ?? w.id;
+        const nm = w.winnerName || w.name || w.customerName || null;
+        if (!t || !nm) continue;
 
-      // 5) Injeta nome SOMENTE se o item está premiado
+        for (const k of keyVariants(t)) {
+          if (!nameByTicket.has(k)) {
+            nameByTicket.set(k, nm);
+          }
+        }
+      }
+
+      // 5) Injeta nome SOMENTE se o item está premiado (tentando todas as variações)
       const winners = normalizedInstant.map((np) => {
-        const injectedName = np.awarded
-          ? (nameByTicket.get(np.ticket) ?? np.name ?? null)
-          : null;
+        if (!np.awarded) {
+          return { ...np, winnerName: null, name: null };
+        }
+
+        // tenta todas as variações do próprio ticket
+        const faces = np._ticketFaces || {};
+        const candidates = Array.from(new Set([
+          np.ticket, np.id, np.ticketNumber,
+          faces.canonical, faces.pad6, faces.pad7, faces.raw
+        ])).filter(Boolean);
+
+        let injectedName = np.name ?? null;
+        for (const key of candidates) {
+          const val = nameByTicket.get(String(key));
+          if (val) { injectedName = val; break; }
+        }
 
         return {
           ...np,
-          winnerName: injectedName,  // usado no PrizeDetail
-          name: injectedName,        // compat com renderização atual
+          winnerName: injectedName,
+          name: injectedName,
         };
       });
 
@@ -124,6 +170,7 @@ export const AppProvider = ({ children }) => {
         titleOptions: raffle.titleOptions ?? [],
         winners, // <- já enriquecidos com winnerName quando premiados
       });
+
     } catch (error) {
       console.error('Failed to load app data', error);
       setPrize(null);
@@ -138,12 +185,11 @@ export const AppProvider = ({ children }) => {
 
   // Marca o ticket como premiado no estado (update otimista)
   const awardPrize = useCallback((ticketId, winnerName) => {
-    const normalized = normTicket(ticketId);
     setPrize((currentPrize) => {
       if (!currentPrize) return currentPrize;
+
       const updatedWinners = (currentPrize.winners || []).map((w) => {
-        const wTicket = normTicket(w.ticketNumber ?? w.ticket ?? w.id);
-        if (wTicket === normalized) {
+        if (ticketEq(w.ticketNumber ?? w.ticket ?? w.id, ticketId)) {
           return {
             ...w,
             awarded: true,
@@ -162,10 +208,9 @@ export const AppProvider = ({ children }) => {
 
   const findWinnerByTicket = useCallback((ticketId) => {
     if (!prize) return null;
-    const target = normTicket(ticketId);
     return (
       (prize.winners || []).find(
-        (w) => normTicket(w.ticketNumber ?? w.ticket ?? w.id) === target
+        (w) => ticketEq(w.ticketNumber ?? w.ticket ?? w.id, ticketId)
       ) || null
     );
   }, [prize]);
@@ -176,8 +221,7 @@ export const AppProvider = ({ children }) => {
     awardPrize,
     findWinnerByTicket,
     reload: loadData,
-    // exporta helpers se quiser usar no front
-    _utils: { normTicket, ticketEq, isAwarded },
+    _utils: { digits, canonical, pad6, pad7, keyVariants, ticketEq, isAwarded },
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

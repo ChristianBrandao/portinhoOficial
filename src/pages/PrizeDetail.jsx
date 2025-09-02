@@ -22,7 +22,7 @@ const PrizeDetail = () => {
   // helper: devolve os 2 primeiros nomes de uma string
   const twoNames = (s) => {
     const parts = String(s || '').trim().split(/\s+/);
-    return parts.slice(0, 2).join(' ') || 'Ganhador';
+    return parts.slice(0, 2).join(' ');
   };
 
   const raffleId = prize?.id || id;
