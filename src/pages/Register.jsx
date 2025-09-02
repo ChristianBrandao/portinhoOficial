@@ -8,7 +8,7 @@ import Header from '@/components/shared/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/components/ui/use-toast';
-import { createUser } from '@/services/api';
+import { registerUser } from '@/services/api';
 
 const onlyDigits = (s) => String(s || '').replace(/\D/g, '');
 
@@ -60,7 +60,7 @@ const Register = () => {
 
     setLoading(true);
     try {
-      await createUser({
+      await registerUser({
         name: name.trim(),
         email: email.trim() || undefined,
         phone: phoneDigits,
