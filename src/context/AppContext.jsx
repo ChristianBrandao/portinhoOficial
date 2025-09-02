@@ -9,12 +9,12 @@ export const AppProvider = ({ children }) => {
 
   /* ===== Helpers ===== */
   const normTicket = (t) => {
-    // Normaliza para string numérica; ajuste o padStart se o seu padrão tiver outro tamanho
-    const s = String(t ?? '').replace(/\D/g, '');
-    return s.padStart(6, '0');
+    // ⚠️ NÃO faça pad aqui; backend usa 7 dígitos (ex.: 1.000.000–2.000.000)
+    // Se precisar exibir com zeros à esquerda, formate só na UI.
+    return String(t ?? '').replace(/\D/g, '');
   };
 
-  // compara bilhetes ignorando zeros à esquerda / número vs string
+  // compara bilhetes ignorando formatação
   const ticketEq = (a, b) => normTicket(a) === normTicket(b);
 
   // interpreta "premiado" a partir de vários formatos possíveis no payload
@@ -25,7 +25,7 @@ export const AppProvider = ({ children }) => {
     if (typeof v === 'string') {
       const s = v.trim().toLowerCase();
       if (['true', '1', 'y', 'yes'].includes(s)) return true;
-      if (/^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:/i.test(s)) return true; // ISO date em awardedAt
+      if (/^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:/i.test(s)) return true; // ISO em awardedAt
       if (s.startsWith('purchase-')) return true; // winnerId pattern
       return false;
     }
@@ -42,7 +42,7 @@ export const AppProvider = ({ children }) => {
     return active || null;
   };
 
-  const normalizeInstantPrize = (p) => {
+  const normalizeInstantPrize = (p = {}) => {
     // resolve ticket e normaliza
     const rawTicket = p.ticketNumber ?? p.ticket ?? p.id;
     const ticketId = normTicket(rawTicket);
@@ -59,7 +59,7 @@ export const AppProvider = ({ children }) => {
       ticketNumber: ticketId,       // mantém também em ticketNumber
       prizeName: p.prizeName ?? 'Prêmio Instantâneo',
       awarded: awardedFlag,
-      name: p.name ?? p.winnerName ?? null,
+      name: p.name ?? p.winnerName ?? null, // pode vir vazio; preenchido depois se premiado
       // mantém campos originais como awardedAt, winnerId, etc.
     };
   };
@@ -79,7 +79,7 @@ export const AppProvider = ({ children }) => {
       // 2) Instant prizes do raffle
       const instantPrizes = await getInstantPrizes(raffle.id);
       const normalizedInstant = Array.isArray(instantPrizes)
-        ? instantPrizes.map(normalizeInstantPrize)
+        ? instantPrizes.map((x) => normalizeInstantPrize(x))
         : [];
 
       // 3) Winners por raffle (para enriquecer apenas os premiados)
@@ -91,9 +91,11 @@ export const AppProvider = ({ children }) => {
         console.warn('Falha ao carregar winners:', e?.message || e);
       }
 
+      const rawWinners = Array.isArray(winnersDoc?.winners) ? winnersDoc.winners : [];
+
       // 4) Mapa ticket -> nome (winnerName/name/customerName)
       const nameByTicket = new Map(
-        (winnersDoc?.winners || []).map((w) => {
+        rawWinners.map((w) => {
           const tk = normTicket(w.ticket ?? w.ticketNumber ?? w.id);
           const nm = w.winnerName || w.name || w.customerName || null;
           return [tk, nm];
@@ -176,7 +178,6 @@ export const AppProvider = ({ children }) => {
     awardPrize,
     findWinnerByTicket,
     reload: loadData,
-    // exporta helpers se quiser usar no front
     _utils: { normTicket, ticketEq, isAwarded },
   };
 

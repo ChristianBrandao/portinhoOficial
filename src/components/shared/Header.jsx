@@ -37,8 +37,8 @@ const Header = () => {
     { name: "Meus números", icon: <Tag className="h-6 w-6" />, link: "/meus-numeros" },
     { name: "Cadastro", icon: <User className="h-6 w-6" />, link: "/cadastro" },
     { name: "Ganhadores", icon: <Trophy className="h-6 w-6" />, link: "/ganhadores" },
-    { name: "Termos de uso", icon: <FileText className="h-6 w-6" />, action: handleFeatureClick },
-    { name: "Entrar em contato", icon: <Mail className="h-6 w-6" />, action: handleFeatureClick },
+    //{ name: "Termos de uso", icon: <FileText className="h-6 w-6" />, action: handleFeatureClick },
+    //{ name: "Entrar em contato", icon: <Mail className="h-6 w-6" />, action: handleFeatureClick },
   ];
 
   return (
