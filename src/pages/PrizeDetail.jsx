@@ -150,8 +150,8 @@ const PrizeDetail = () => {
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                     className={`relative flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer transition-all duration-200 ${quantity === option.titles
-                        ? 'bg-cyan-600 text-white shadow-lg ring-2 ring-cyan-400'
-                        : 'bg-black text-white border border-gray-700'
+                      ? 'bg-cyan-600 text-white shadow-lg ring-2 ring-cyan-400'
+                      : 'bg-black text-white border border-gray-700'
                       }`}
                     onClick={() => handleSelectTitles(option.titles, option.price)}
                   >
@@ -207,11 +207,15 @@ const PrizeDetail = () => {
                   </Button>
                 </div>
                 <Button
-                  className="bg-cyan-500 text-black font-bold text-lg px-6 py-3 rounded-lg hover:bg-cyan-400"
+                  className="bg-cyan-500 text-black font-bold 
+             flex items-center justify-center gap-2 
+             text-sm sm:text-base md:text-lg 
+             px-4 sm:px-6 py-2 sm:py-3 
+             rounded-lg hover:bg-cyan-400 w-full sm:w-auto"
                   onClick={startCheckout}
                 >
-                  Participar{' '}
-                  <span className="ml-2">
+                  <span>Participar</span>
+                  <span className="font-extrabold">
                     R$ {selectedPrice.toFixed(2).replace('.', ',')}
                   </span>
                 </Button>
@@ -255,15 +259,15 @@ const PrizeDetail = () => {
                     <div
                       key={ticketLbl}
                       className={`flex items-center justify-between p-3 rounded-lg text-sm transition shadow-sm ${awardedFlag
-                          ? 'bg-gradient-to-r from-emerald-700 to-emerald-600 text-white'
-                          : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                        ? 'bg-gradient-to-r from-emerald-700 to-emerald-600 text-white'
+                        : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                         }`}
                     >
                       {/* Número do bilhete */}
                       <span
                         className={`font-mono font-bold px-3 py-1 rounded-md ${awardedFlag
-                            ? 'bg-emerald-900 border border-emerald-400 text-emerald-100'
-                            : 'bg-gray-800 border border-gray-600 text-gray-300'
+                          ? 'bg-emerald-900 border border-emerald-400 text-emerald-100'
+                          : 'bg-gray-800 border border-gray-600 text-gray-300'
                           }`}
                       >
                         {ticketLbl}
@@ -272,8 +276,8 @@ const PrizeDetail = () => {
                       {/* Nome do prêmio */}
                       <span
                         className={`flex-1 text-center font-extrabold tracking-wide text-base md:text-lg ${awardedFlag
-                            ? 'text-white drop-shadow-md'
-                            : 'text-gray-300'
+                          ? 'text-white drop-shadow-md'
+                          : 'text-gray-300'
                           }`}
                       >
                         {winner.prizeName || '—'}

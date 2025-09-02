@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import Header from "@/components/shared/Header";
 
 // Componente mock de `Helmet` para gerenciar metadados
 const Helmet = ({ children }) => {
@@ -19,14 +20,12 @@ const motion = {
 
 // Componente mock de `Header`
 const Header = () => (
-  <header className="w-full bg-gray-950 p-4 border-b border-gray-800 text-white">
-    <div className="flex justify-between items-center max-w-2xl mx-auto">
-      <h1 className="text-xl font-bold">Portinho</h1>
-      <nav>
-        <Button className="bg-gray-800 hover:bg-gray-700">Login</Button>
-      </nav>
-    </div>
-  </header>
+<div className="min-h-screen bg-gray-900 flex flex-col">
+  <Header />   {/* Header unificado */}
+  <main className="flex-1">
+    {/* conteúdo da página */}
+  </main>
+</div>
 );
 
 // Componente mock de `Button` (de shadcn/ui)

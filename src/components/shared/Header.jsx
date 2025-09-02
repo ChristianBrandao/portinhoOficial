@@ -1,7 +1,8 @@
+// src/components/shared/Header.jsx
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ShoppingCart, Menu, Home, List, Tag, User, Trophy, FileText, Mail, X, Instagram } from 'lucide-react';
+import { Menu, Home, List, Tag, User, Trophy, FileText, Mail, X, Instagram } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -63,20 +64,24 @@ const Header = () => {
           initial={{ x: 100, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ delay: 0.35, duration: 0.5 }}
-          className="flex items-center space-x-4"
+          className="flex items-center"
         >
-          <Button variant="ghost" size="icon" className="text-white hover:bg-gray-800" onClick={handleFeatureClick}>
-            <ShoppingCart className="h-6 w-6" />
-          </Button>
-
           <Sheet>
             <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" className="text-white hover:bg-gray-800" aria-label="Abrir menu">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-white hover:bg-gray-800"
+                aria-label="Abrir menu"
+              >
                 <Menu className="h-6 w-6" />
               </Button>
             </SheetTrigger>
 
-            <SheetContent side="right" className="bg-black text-white p-0 border-none w-full max-w-sm">
+            <SheetContent
+              side="right"
+              className="bg-black text-white p-0 border-none w-full max-w-sm"
+            >
               <SheetHeader className="relative h-20 flex flex-row items-center justify-between px-6 py-4">
                 <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2">
                   <Logo />
@@ -96,7 +101,9 @@ const Header = () => {
                         <SheetClose asChild>
                           <Link
                             to={item.link}
-                            className={`flex items-center space-x-4 py-4 px-2 rounded-md transition-colors ${isActive ? 'bg-gray-800' : 'hover:bg-gray-800'}`}
+                            className={`flex items-center space-x-4 py-4 px-2 rounded-md transition-colors ${
+                              isActive ? "bg-gray-800" : "hover:bg-gray-800"
+                            }`}
                           >
                             {item.icon}
                             <span className="text-lg font-medium">{item.name}</span>
