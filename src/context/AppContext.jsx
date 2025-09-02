@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import { getRaffles, getInstantPrizes, getWinners } from '@/services/api';
+import { getRaffles, getInstantPrizes, getWinners, getPurchase } from '@/services/api';
 
 const AppContext = createContext();
 
@@ -9,15 +9,12 @@ export const AppProvider = ({ children }) => {
 
   /* ===== Helpers ===== */
   const normTicket = (t) => {
-    // ⚠️ NÃO faça pad aqui; backend usa 7 dígitos (ex.: 1.000.000–2.000.000)
-    // Se precisar exibir com zeros à esquerda, formate só na UI.
+    // Não padronize com zeros — mantenha só dígitos para casar 6/7+ dígitos
     return String(t ?? '').replace(/\D/g, '');
   };
 
-  // compara bilhetes ignorando formatação
   const ticketEq = (a, b) => normTicket(a) === normTicket(b);
 
-  // interpreta "premiado" a partir de vários formatos possíveis no payload
   const isAwarded = (v) => {
     if (v === true) return true;
     if (typeof v === 'number') return v === 1;
@@ -43,57 +40,47 @@ export const AppProvider = ({ children }) => {
   };
 
   const normalizeInstantPrize = (p = {}) => {
-    // resolve ticket e normaliza
     const rawTicket = p.ticketNumber ?? p.ticket ?? p.id;
     const ticketId = normTicket(rawTicket);
-
-    // resolve flag de prêmio de forma confiável
     const awardedFlag = isAwarded(
-      p.awarded ?? p.isAwarded ?? p.awardedAt ?? p.winnerId // qualquer indicador de premiação
+      p.awarded ?? p.isAwarded ?? p.awardedAt ?? p.winnerId
     );
 
     return {
       ...p,
-      id: ticketId,                 // garante id consistente
-      ticket: ticketId,             // facilita buscas
-      ticketNumber: ticketId,       // mantém também em ticketNumber
+      id: ticketId,
+      ticket: ticketId,
+      ticketNumber: ticketId,
       prizeName: p.prizeName ?? 'Prêmio Instantâneo',
       awarded: awardedFlag,
-      name: p.name ?? p.winnerName ?? null, // pode vir vazio; preenchido depois se premiado
-      // mantém campos originais como awardedAt, winnerId, etc.
+      winnerId: p.winnerId ?? p.purchaseId ?? null, // garantir presença
+      name: p.name ?? p.winnerName ?? null,
     };
   };
 
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      // 1) Raffles
+      // 1) Raffle
       const raffles = await getRaffles();
       const raffle = pickActiveRaffle(raffles);
-      if (!raffle || !raffle.id) {
-        console.warn('Nenhum sorteio ativo/encontrado em getRaffles()');
+      if (!raffle?.id) {
         setPrize(null);
         return;
       }
 
-      // 2) Instant prizes do raffle
+      // 2) Instant prizes
       const instantPrizes = await getInstantPrizes(raffle.id);
       const normalizedInstant = Array.isArray(instantPrizes)
-        ? instantPrizes.map((x) => normalizeInstantPrize(x))
+        ? instantPrizes.map(normalizeInstantPrize)
         : [];
 
-      // 3) Winners por raffle (para enriquecer apenas os premiados)
+      // 3) Winners doc (se existir com nomes, ótimo; senão seguimos)
       let winnersDoc = null;
-      try {
-        // Espera { raffleId, winners: [...] }
-        winnersDoc = await getWinners(raffle.id);
-      } catch (e) {
-        console.warn('Falha ao carregar winners:', e?.message || e);
-      }
-
+      try { winnersDoc = await getWinners(raffle.id); } catch {}
       const rawWinners = Array.isArray(winnersDoc?.winners) ? winnersDoc.winners : [];
 
-      // 4) Mapa ticket -> nome (winnerName/name/customerName)
+      // 4) Mapa ticket->nome vindo do winners (se houver)
       const nameByTicket = new Map(
         rawWinners.map((w) => {
           const tk = normTicket(w.ticket ?? w.ticketNumber ?? w.id);
@@ -102,48 +89,66 @@ export const AppProvider = ({ children }) => {
         })
       );
 
-      // 5) Injeta nome SOMENTE se o item está premiado
-      const winners = normalizedInstant.map((np) => {
-        const injectedName = np.awarded
-          ? (nameByTicket.get(np.ticket) ?? np.name ?? null)
-          : null;
-
-        return {
-          ...np,
-          winnerName: injectedName,  // usado no PrizeDetail
-          name: injectedName,        // compat com renderização atual
-        };
+      // 5) Primeiro enriquecimento: usar nome do winners (quando houver) nos premiados
+      let winners = normalizedInstant.map((np) => {
+        const injectedName = np.awarded ? (nameByTicket.get(np.ticket) ?? np.name ?? null) : null;
+        return { ...np, winnerName: injectedName, name: injectedName };
       });
 
-      // 6) Objeto usado pela UI
+      // 6) Segundo enriquecimento: buscar nome por purchaseId (winnerId) para premiados sem nome
+      const needsPurchase = winners.filter(w => w.awarded && !w.winnerName && w.winnerId);
+      if (needsPurchase.length) {
+        // ids únicos
+        const uniqueIds = Array.from(new Set(needsPurchase.map(w => String(w.winnerId))));
+        // busca em paralelo
+        const purchases = await Promise.all(
+          uniqueIds.map(async (pid) => {
+            try { return { pid, data: await getPurchase(pid) }; }
+            catch { return { pid, data: null }; }
+          })
+        );
+        // mapa id -> customer.name
+        const nameByPurchaseId = new Map(
+          purchases.map(({ pid, data }) => {
+            const nm = data?.customer?.name ?? null;
+            return [pid, nm];
+          })
+        );
+        // aplica nomes
+        winners = winners.map(w => {
+          if (w.awarded && !w.winnerName && w.winnerId) {
+            const nm = nameByPurchaseId.get(String(w.winnerId)) || null;
+            return { ...w, winnerName: nm, name: nm };
+          }
+          return w;
+        });
+      }
+
       setPrize({
         id: raffle.id,
         name: raffle.name ?? raffle.title ?? 'Sorteio',
         description: raffle.description ?? '',
         imageURL: raffle.imageURL ?? raffle.image ?? '',
         imageAlt: raffle.imageAlt ?? raffle.name ?? 'Imagem do sorteio',
-        pricePerTicket: Number(raffle.pricePerTicket ?? raffle.unitPrice ?? 0.0),
+        pricePerTicket: Number(raffle.pricePerTicket ?? raffle.unitPrice ?? 0),
         titleOptions: raffle.titleOptions ?? [],
-        winners, // <- já enriquecidos com winnerName quando premiados
+        winners,
       });
-    } catch (error) {
-      console.error('Failed to load app data', error);
+    } catch (err) {
+      console.error('Failed to load app data', err);
       setPrize(null);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // Marca o ticket como premiado no estado (update otimista)
   const awardPrize = useCallback((ticketId, winnerName) => {
     const normalized = normTicket(ticketId);
-    setPrize((currentPrize) => {
-      if (!currentPrize) return currentPrize;
-      const updatedWinners = (currentPrize.winners || []).map((w) => {
+    setPrize((current) => {
+      if (!current) return current;
+      const updated = (current.winners || []).map((w) => {
         const wTicket = normTicket(w.ticketNumber ?? w.ticket ?? w.id);
         if (wTicket === normalized) {
           return {
@@ -157,9 +162,8 @@ export const AppProvider = ({ children }) => {
         }
         return w;
       });
-      return { ...currentPrize, winners: updatedWinners };
+      return { ...current, winners: updated };
     });
-    // Opcional: sincronizar com backend e depois chamar loadData()
   }, []);
 
   const findWinnerByTicket = useCallback((ticketId) => {

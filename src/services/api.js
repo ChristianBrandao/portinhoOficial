@@ -186,3 +186,18 @@ export const getWinners = async (raffleId) => {
   );
   return await handleResponse(resp); // espera { raffleId, winners: [...] }
 };
+
+
+// Busca uma compra específica; retorna { id, status, customer: { name, email }, ... }
+export const getPurchase = async (purchaseId) => {
+  const resp = await fetch(`${API_BASE_URL}/purchases/${encodeURIComponent(purchaseId)}`, {
+    method: 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (!resp.ok) {
+    let msg = 'Erro ao buscar compra';
+    try { const j = await resp.json(); msg = j?.message || msg; } catch {}
+    throw new Error(msg);
+  }
+  return await resp.json();
+};
