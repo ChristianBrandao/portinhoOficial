@@ -149,11 +149,10 @@ const PrizeDetail = () => {
                     key={index}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className={`relative flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer transition-all duration-200 ${
-                      quantity === option.titles
+                    className={`relative flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer transition-all duration-200 ${quantity === option.titles
                         ? 'bg-cyan-600 text-white shadow-lg ring-2 ring-cyan-400'
                         : 'bg-black text-white border border-gray-700'
-                    }`}
+                      }`}
                     onClick={() => handleSelectTitles(option.titles, option.price)}
                   >
                     {option.popular && (
@@ -255,43 +254,50 @@ const PrizeDetail = () => {
                   return (
                     <div
                       key={ticketLbl}
-                      className={`flex items-center justify-between p-2 rounded-lg text-sm transition ${
-                        awardedFlag
-                          ? 'bg-black text-white'
+                      className={`flex items-center justify-between p-3 rounded-lg text-sm transition shadow-sm ${awardedFlag
+                          ? 'bg-gradient-to-r from-emerald-700 to-emerald-600 text-white'
                           : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                      }`}
-                    >
-                      <span
-                        className={`font-bold px-3 py-1 rounded-full ${
-                          awardedFlag ? 'bg-black border border-white' : 'bg-gray-600'
                         }`}
+                    >
+                      {/* Número do bilhete */}
+                      <span
+                        className={`font-mono font-bold px-3 py-1 rounded-md ${awardedFlag
+                            ? 'bg-emerald-900 border border-emerald-400 text-emerald-100'
+                            : 'bg-gray-800 border border-gray-600 text-gray-300'
+                          }`}
                       >
                         {ticketLbl}
                       </span>
 
+                      {/* Nome do prêmio */}
                       <span
-                        className={`flex-1 text-center ${
-                          awardedFlag ? 'text-yellow-300' : 'text-cyan-300'
-                        } font-extrabold tracking-wide text-base md:text-lg`}
+                        className={`flex-1 text-center font-extrabold tracking-wide text-base md:text-lg ${awardedFlag
+                            ? 'text-white drop-shadow-md'
+                            : 'text-gray-300'
+                          }`}
                       >
                         {winner.prizeName || '—'}
                       </span>
 
+                      {/* Status lateral */}
                       <div className="flex items-center gap-2">
-                        <span
-                          className={`px-2 py-0.5 rounded-md text-xs font-medium ${
-                            awardedFlag
-                              ? 'border border-emerald-500/30 bg-emerald-600/20 text-emerald-300'
-                              : 'text-gray-400 bg-transparent border border-transparent'
-                          }`}
-                        >
-                          {name}
-                        </span>
-                        {awardedFlag && <Trophy size={16} className="text-yellow-400" />}
+                        {awardedFlag ? (
+                          <div className="flex items-center gap-1 text-yellow-300 font-semibold">
+                            <Trophy size={18} /> <span className="text-sm">Premiado</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-emerald-400 font-medium">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 00-1.414 0L9 11.586 6.707 9.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l7-7a1 1 0 000-1.414z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm">Disponível</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
                 })}
+
               </div>
             </div>
 
