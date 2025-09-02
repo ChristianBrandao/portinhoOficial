@@ -175,3 +175,14 @@ export const getInstantPrizes = async (raffleId) => {
     throw error;
   }
 };
+
+
+// Lista winners por raffleId
+export const getWinners = async (raffleId) => {
+  if (!raffleId) throw new Error("raffleId é obrigatório");
+  const resp = await fetch(
+    `${API_BASE_URL}/winners?raffleId=${encodeURIComponent(raffleId)}`,
+    { method: "GET" }
+  );
+  return await handleResponse(resp); // espera { raffleId, winners: [...] }
+};

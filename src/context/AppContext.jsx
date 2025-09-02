@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import { getRaffles, getInstantPrizes } from '@/services/api';
+import { getRaffles, getInstantPrizes, getWinners } from '@/services/api';
 
 const AppContext = createContext();
 
@@ -9,15 +9,15 @@ export const AppProvider = ({ children }) => {
 
   /* ===== Helpers ===== */
   const normTicket = (t) => {
+    // Normaliza para string numérica; ajuste o padStart se o seu padrão tiver outro tamanho
     const s = String(t ?? '').replace(/\D/g, '');
-    // Ajuste o tamanho se o seu padrão não for 6 dígitos
     return s.padStart(6, '0');
   };
 
   // compara bilhetes ignorando zeros à esquerda / número vs string
   const ticketEq = (a, b) => normTicket(a) === normTicket(b);
 
-
+  // interpreta "premiado" a partir de vários formatos possíveis no payload
   const isAwarded = (v) => {
     if (v === true) return true;
     if (typeof v === 'number') return v === 1;
@@ -25,7 +25,7 @@ export const AppProvider = ({ children }) => {
     if (typeof v === 'string') {
       const s = v.trim().toLowerCase();
       if (['true', '1', 'y', 'yes'].includes(s)) return true;
-      if (/^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:/i.test(s)) return true; // ISO date in awardedAt
+      if (/^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:/i.test(s)) return true; // ISO date em awardedAt
       if (s.startsWith('purchase-')) return true; // winnerId pattern
       return false;
     }
@@ -78,11 +78,42 @@ export const AppProvider = ({ children }) => {
 
       // 2) Instant prizes do raffle
       const instantPrizes = await getInstantPrizes(raffle.id);
-      const winners = Array.isArray(instantPrizes)
+      const normalizedInstant = Array.isArray(instantPrizes)
         ? instantPrizes.map(normalizeInstantPrize)
         : [];
 
-      // 3) Objeto usado pela UI
+      // 3) Winners por raffle (para enriquecer apenas os premiados)
+      let winnersDoc = null;
+      try {
+        // Espera { raffleId, winners: [...] }
+        winnersDoc = await getWinners(raffle.id);
+      } catch (e) {
+        console.warn('Falha ao carregar winners:', e?.message || e);
+      }
+
+      // 4) Mapa ticket -> nome (winnerName/name/customerName)
+      const nameByTicket = new Map(
+        (winnersDoc?.winners || []).map((w) => {
+          const tk = normTicket(w.ticket ?? w.ticketNumber ?? w.id);
+          const nm = w.winnerName || w.name || w.customerName || null;
+          return [tk, nm];
+        })
+      );
+
+      // 5) Injeta nome SOMENTE se o item está premiado
+      const winners = normalizedInstant.map((np) => {
+        const injectedName = np.awarded
+          ? (nameByTicket.get(np.ticket) ?? np.name ?? null)
+          : null;
+
+        return {
+          ...np,
+          winnerName: injectedName,  // usado no PrizeDetail
+          name: injectedName,        // compat com renderização atual
+        };
+      });
+
+      // 6) Objeto usado pela UI
       setPrize({
         id: raffle.id,
         name: raffle.name ?? raffle.title ?? 'Sorteio',
@@ -91,7 +122,7 @@ export const AppProvider = ({ children }) => {
         imageAlt: raffle.imageAlt ?? raffle.name ?? 'Imagem do sorteio',
         pricePerTicket: Number(raffle.pricePerTicket ?? raffle.unitPrice ?? 0.0),
         titleOptions: raffle.titleOptions ?? [],
-        winners,
+        winners, // <- já enriquecidos com winnerName quando premiados
       });
     } catch (error) {
       console.error('Failed to load app data', error);
@@ -117,6 +148,7 @@ export const AppProvider = ({ children }) => {
             ...w,
             awarded: true,
             name: winnerName || w.name || 'Vencedor',
+            winnerName: winnerName || w.winnerName || 'Vencedor',
             awardedAt: w.awardedAt ?? new Date().toISOString(),
             date: new Date().toLocaleDateString('pt-BR'),
           };
