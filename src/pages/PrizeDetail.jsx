@@ -303,10 +303,10 @@ const PrizeDetail = () => {
                       {/* Status lateral: quando premiado, mostra 2 primeiros nomes; senão, “Disponível” */}
                       <div className="flex items-center gap-2">
                         {awardedFlag ? (
-                          <div className="flex items-center gap-1 text-yellow-300 font-semibold">
+                          <div className="flex items-center gap-1 text-white-300 font-semibold">
                             <Trophy size={18} />
                             <span className="text-sm">
-                              {twoNames(winner.name || winner.customerName || '')}
+                              {twoNames(winner.winnerName || winner.name || winner.customerName || '')}
                             </span>
                           </div>
                         ) : (
