@@ -223,7 +223,7 @@ const PrizeDetail = () => {
                     size="icon"
                     className="bg-gray-600 text-white hover:bg-gray-500"
                     onClick={() => {
-                      const newQty = Math.max(1, quantity - 1);
+                      const newQty = Math.max(5, quantity - 1);
                       setQuantity(newQty);
                       setSelectedPrice(newQty * prize.pricePerTicket);
                     }}
