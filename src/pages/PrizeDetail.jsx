@@ -25,6 +25,34 @@ const PrizeDetail = () => {
     return parts.slice(0, 2).join(' ');
   };
 
+  // pill de preço (super chamativa) — usa o texto de prizeName para extrair o valor
+  const PricePill = ({ prizeName }) => {
+    const m = String(prizeName ?? '').match(/(\d{1,3}(?:[.\s]\d{3})*|\d+)(?:[,.](\d{2}))?/);
+    const amount = m
+      ? Number((m[1] || '0').replace(/[.\s]/g, '') + (m[2] ? `.${m[2]}` : ''))
+      : null;
+
+    return (
+      <div className="flex justify-center">
+        <div
+          className="
+            inline-flex items-baseline gap-2 px-4 py-2 rounded-full text-white
+            bg-gradient-to-br from-emerald-400 via-emerald-500 to-cyan-400
+            ring-1 ring-white/20
+            shadow-[0_10px_30px_rgba(34,211,238,0.25)]
+            animate-[pulseGlow_2.2s_ease-in-out_infinite]
+          "
+          style={{ WebkitBackdropFilter: 'blur(2px)', backdropFilter: 'blur(2px)' }}
+        >
+          <span className="text-base opacity-90">R$</span>
+          <span className="text-2xl font-black tracking-wide drop-shadow-[0_2px_12px_rgba(16,185,129,0.65)]">
+            {amount != null ? amount.toLocaleString('pt-BR') : String(prizeName ?? '—')}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   const raffleId = prize?.id || id;
 
   const [quantity, setQuantity] = useState(10);
@@ -109,6 +137,13 @@ const PrizeDetail = () => {
             2
           )}.`}
         />
+        {/* keyframe da animação do chip de preço */}
+        <style>{`
+          @keyframes pulseGlow {
+            0%,100% { box-shadow: 0 10px 30px rgba(34,211,238,.25), inset 0 1px 0 rgba(255,255,255,.25); }
+            50%     { box-shadow: 0 10px 30px rgba(34,211,238,.40), 0 0 30px rgba(16,185,129,.35), inset 0 1px 0 rgba(255,255,255,.35); }
+          }
+        `}</style>
       </Helmet>
 
       <div className="min-h-screen bg-gray-900 flex flex-col items-center">
@@ -160,10 +195,11 @@ const PrizeDetail = () => {
                     key={index}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    className={`relative flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer transition-all duration-200 ${quantity === option.titles
-                      ? 'bg-cyan-600 text-white shadow-lg ring-2 ring-cyan-400'
-                      : 'bg-black text-white border border-gray-700'
-                      }`}
+                    className={`relative flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer transition-all duration-200 ${
+                      quantity === option.titles
+                        ? 'bg-cyan-600 text-white shadow-lg ring-2 ring-cyan-400'
+                        : 'bg-black text-white border border-gray-700'
+                    }`}
                     onClick={() => handleSelectTitles(option.titles, option.price)}
                   >
                     {option.popular && (
@@ -275,53 +311,56 @@ const PrizeDetail = () => {
                   return (
                     <div
                       key={ticketLbl}
-                      className={`flex items-center justify-between p-3 rounded-lg text-sm transition shadow-sm ${awardedFlag
-                        ? 'bg-gradient-to-r from-emerald-700 to-emerald-600 text-white'
-                        : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
-                        }`}
+                      className={`rounded-xl text-sm transition shadow-sm ${
+                        awardedFlag
+                          ? 'bg-gradient-to-r from-emerald-700 to-emerald-600 text-white'
+                          : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                      }`}
                     >
-                      {/* Número do bilhete */}
-                      <span
-                        className={`font-mono font-bold px-3 py-1 rounded-md ${awardedFlag
-                          ? 'bg-emerald-900 border border-emerald-400 text-emerald-100'
-                          : 'bg-gray-800 border border-gray-600 text-gray-300'
+                      {/* grid: 96px | flex | 260px  -> nome/estado SEMPRE no mesmo lugar */}
+                      <div className="grid grid-cols-[96px_1fr_260px] items-center gap-3 px-3 py-3">
+                        {/* Número do bilhete (coluna 1, largura fixa) */}
+                        <span
+                          className={`font-mono font-bold px-3 py-1 rounded-md text-center ${
+                            awardedFlag
+                              ? 'bg-emerald-900 border border-emerald-400 text-emerald-100'
+                              : 'bg-gray-800 border border-gray-600 text-gray-300'
                           }`}
-                      >
-                        {ticketLbl}
-                      </span>
+                        >
+                          {ticketLbl}
+                        </span>
 
-                      {/* Nome do prêmio */}
-                      <span
-                        className={`flex-1 text-center font-extrabold tracking-wide text-base md:text-lg ${awardedFlag
-                          ? 'text-white drop-shadow-md'
-                          : 'text-gray-300'
-                          }`}
-                      >
-                        {winner.prizeName || '—'}
-                      </span>
+                        {/* Preço bem chamativo no centro (coluna 2) */}
+                        <div className="flex justify-center">
+                          <PricePill prizeName={winner.prizeName || 'R$ 200'} />
+                        </div>
 
-                      {/* Status lateral: quando premiado, mostra 2 primeiros nomes; senão, “Disponível” */}
-                      <div className="flex items-center gap-2">
-                        {awardedFlag ? (
-                          <div className="flex items-center gap-1 text-white-300 font-semibold">
-                            <Trophy size={18} />
-                            <span className="text-sm">
-                              {twoNames(winner.winnerName || winner.name || winner.customerName || '')}
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 text-emerald-400 font-medium">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 00-1.414 0L9 11.586 6.707 9.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l7-7a1 1 0 000-1.414z" clipRule="evenodd" />
-                            </svg>
-                            <span className="text-sm">Disponível</span>
-                          </div>
-                        )}
+                        {/* Status / Ganhador (coluna 3, direita fixa) */}
+                        <div className="flex justify-end">
+                          {awardedFlag ? (
+                            <div className="flex items-center gap-2 text-white font-extrabold uppercase max-w-[220px] truncate">
+                              <Trophy size={18} />
+                              <span className="truncate">
+                                {twoNames(winner.winnerName || winner.name || winner.customerName || '')}
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2 text-emerald-300">
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                                <path
+                                  fillRule="evenodd"
+                                  d="M16.707 5.293a1 1 0 00-1.414 0L9 11.586 6.707 9.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l7-7a1 1 0 000-1.414z"
+                                  clipRule="evenodd"
+                                />
+                              </svg>
+                              <span>Disponível</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   );
                 })}
-
               </div>
             </div>
 
