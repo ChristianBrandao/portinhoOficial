@@ -25,7 +25,7 @@ const PrizeDetail = () => {
     return parts.slice(0, 2).join(' ');
   };
 
-  // pill de preço (super chamativa) — usa o texto de prizeName para extrair o valor
+  // Chip de preço proporcional (40px de altura)
   const PricePill = ({ prizeName }) => {
     const m = String(prizeName ?? '').match(/(\d{1,3}(?:[.\s]\d{3})*|\d+)(?:[,.](\d{2}))?/);
     const amount = m
@@ -36,16 +36,14 @@ const PrizeDetail = () => {
       <div className="flex justify-center">
         <div
           className="
-            inline-flex items-baseline gap-2 px-4 py-2 rounded-full text-white
+            inline-flex items-center gap-2 h-10 px-3 rounded-full text-white
             bg-gradient-to-br from-emerald-400 via-emerald-500 to-cyan-400
-            ring-1 ring-white/20
-            shadow-[0_10px_30px_rgba(34,211,238,0.25)]
-            animate-[pulseGlow_2.2s_ease-in-out_infinite]
+            ring-1 ring-white/10
+            shadow-[0_6px_16px_rgba(34,211,238,0.18)]
           "
-          style={{ WebkitBackdropFilter: 'blur(2px)', backdropFilter: 'blur(2px)' }}
         >
-          <span className="text-base opacity-90">R$</span>
-          <span className="text-2xl font-black tracking-wide drop-shadow-[0_2px_12px_rgba(16,185,129,0.65)]">
+          <span className="text-xs opacity-95">R$</span>
+          <span className="text-xl font-black tracking-wide">
             {amount != null ? amount.toLocaleString('pt-BR') : String(prizeName ?? '—')}
           </span>
         </div>
@@ -112,6 +110,7 @@ const PrizeDetail = () => {
   }
 
   const titleOptions = prize.titleOptions || [];
+  0
   const winners = prize.winners || [];
 
   // total e disponíveis (usando detecção robusta)
@@ -137,13 +136,6 @@ const PrizeDetail = () => {
             2
           )}.`}
         />
-        {/* keyframe da animação do chip de preço */}
-        <style>{`
-          @keyframes pulseGlow {
-            0%,100% { box-shadow: 0 10px 30px rgba(34,211,238,.25), inset 0 1px 0 rgba(255,255,255,.25); }
-            50%     { box-shadow: 0 10px 30px rgba(34,211,238,.40), 0 0 30px rgba(16,185,129,.35), inset 0 1px 0 rgba(255,255,255,.35); }
-          }
-        `}</style>
       </Helmet>
 
       <div className="min-h-screen bg-gray-900 flex flex-col items-center">
@@ -317,11 +309,12 @@ const PrizeDetail = () => {
                           : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                       }`}
                     >
-                      {/* grid: 96px | flex | 260px  -> nome/estado SEMPRE no mesmo lugar */}
-                      <div className="grid grid-cols-[96px_1fr_260px] items-center gap-3 px-3 py-3">
-                        {/* Número do bilhete (coluna 1, largura fixa) */}
+                      {/* grid: 96px | flex | 240px  -> nome/estado SEMPRE no mesmo lugar */}
+                      <div className="grid grid-cols-[96px_1fr_240px] items-center gap-3 px-3 py-2">
+                        {/* Número do bilhete (coluna 1, largura/altura fixas) */}
                         <span
-                          className={`font-mono font-bold px-3 py-1 rounded-md text-center ${
+                          className={`inline-flex h-10 w-24 items-center justify-center
+                                      font-mono font-bold rounded-md text-center ${
                             awardedFlag
                               ? 'bg-emerald-900 border border-emerald-400 text-emerald-100'
                               : 'bg-gray-800 border border-gray-600 text-gray-300'
@@ -330,9 +323,9 @@ const PrizeDetail = () => {
                           {ticketLbl}
                         </span>
 
-                        {/* Preço bem chamativo no centro (coluna 2) */}
+                        {/* Preço no centro (coluna 2) */}
                         <div className="flex justify-center">
-                          <PricePill prizeName={winner.prizeName || 'R$ 200'} />
+                          <PricePill prizeName={winner.prizeName || 'R$ 2000'} />
                         </div>
 
                         {/* Status / Ganhador (coluna 3, direita fixa) */}
