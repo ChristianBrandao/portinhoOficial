@@ -8,11 +8,7 @@ export const AppProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   /* ===== Helpers ===== */
-  const normTicket = (t) => {
-    // Não padronize com zeros — mantenha só dígitos para casar 6/7+ dígitos
-    return String(t ?? '').replace(/\D/g, '');
-  };
-
+  const normTicket = (t) => String(t ?? '').replace(/\D/g, '');
   const ticketEq = (a, b) => normTicket(a) === normTicket(b);
 
   const isAwarded = (v) => {
@@ -22,7 +18,7 @@ export const AppProvider = ({ children }) => {
     if (typeof v === 'string') {
       const s = v.trim().toLowerCase();
       if (['true', '1', 'y', 'yes'].includes(s)) return true;
-      if (/^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:/i.test(s)) return true; // ISO em awardedAt
+      if (/^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:/i.test(s)) return true; // ISO date em awardedAt
       if (s.startsWith('purchase-')) return true; // winnerId pattern
       return false;
     }
@@ -42,9 +38,7 @@ export const AppProvider = ({ children }) => {
   const normalizeInstantPrize = (p = {}) => {
     const rawTicket = p.ticketNumber ?? p.ticket ?? p.id;
     const ticketId = normTicket(rawTicket);
-    const awardedFlag = isAwarded(
-      p.awarded ?? p.isAwarded ?? p.awardedAt ?? p.winnerId
-    );
+    const awardedFlag = isAwarded(p.awarded ?? p.isAwarded ?? p.awardedAt ?? p.winnerId);
 
     return {
       ...p,
@@ -53,7 +47,7 @@ export const AppProvider = ({ children }) => {
       ticketNumber: ticketId,
       prizeName: p.prizeName ?? 'Prêmio Instantâneo',
       awarded: awardedFlag,
-      winnerId: p.winnerId ?? p.purchaseId ?? null, // garantir presença
+      winnerId: p.winnerId ?? p.purchaseId ?? null, // se o endpoint não mandar, ficamos null
       name: p.name ?? p.winnerName ?? null,
     };
   };
@@ -75,55 +69,67 @@ export const AppProvider = ({ children }) => {
         ? instantPrizes.map(normalizeInstantPrize)
         : [];
 
-      // 3) Winners doc (se existir com nomes, ótimo; senão seguimos)
+      // 3) Winners (contém ticket e purchaseId; normalmente não traz nome)
       let winnersDoc = null;
       try { winnersDoc = await getWinners(raffle.id); } catch {}
-      const rawWinners = Array.isArray(winnersDoc?.winners) ? winnersDoc.winners : [];
+      const winnersArray = Array.isArray(winnersDoc?.winners) ? winnersDoc.winners : [];
 
-      // 4) Mapa ticket->nome vindo do winners (se houver)
-      const nameByTicket = new Map(
-        rawWinners.map((w) => {
-          const tk = normTicket(w.ticket ?? w.ticketNumber ?? w.id);
-          const nm = w.winnerName || w.name || w.customerName || null;
-          return [tk, nm];
-        })
-      );
+      // 4) Mapas auxiliares vindos do /winners
+      // ticket -> purchaseId (para descobrir o ID da compra de cada ticket premiado)
+      const purchaseIdByTicket = new Map();
+      // ticket -> nome (se por acaso vier, usamos direto)
+      const nameByTicket = new Map();
 
-      // 5) Primeiro enriquecimento: usar nome do winners (quando houver) nos premiados
+      for (const w of winnersArray) {
+        const tk = normTicket(w.ticket ?? w.ticketNumber ?? w.id);
+        if (!tk) continue;
+        const pid = w.purchaseId || w.winnerId || null;
+        if (pid && !purchaseIdByTicket.has(tk)) purchaseIdByTicket.set(tk, pid);
+        const nm = w.winnerName || w.name || w.customerName || null;
+        if (nm && !nameByTicket.has(tk)) nameByTicket.set(tk, nm);
+      }
+
+      // 5) Primeiro enriquecimento: usa nome do /winners se existir
       let winners = normalizedInstant.map((np) => {
         const injectedName = np.awarded ? (nameByTicket.get(np.ticket) ?? np.name ?? null) : null;
         return { ...np, winnerName: injectedName, name: injectedName };
       });
 
-      // 6) Segundo enriquecimento: buscar nome por purchaseId (winnerId) para premiados sem nome
-      const needsPurchase = winners.filter(w => w.awarded && !w.winnerName && w.winnerId);
-      if (needsPurchase.length) {
-        // ids únicos
-        const uniqueIds = Array.from(new Set(needsPurchase.map(w => String(w.winnerId))));
-        // busca em paralelo
-        const purchases = await Promise.all(
-          uniqueIds.map(async (pid) => {
-            try { return { pid, data: await getPurchase(pid) }; }
-            catch { return { pid, data: null }; }
-          })
-        );
-        // mapa id -> customer.name
-        const nameByPurchaseId = new Map(
-          purchases.map(({ pid, data }) => {
-            const nm = data?.customer?.name ?? null;
-            return [pid, nm];
-          })
-        );
-        // aplica nomes
-        winners = winners.map(w => {
-          if (w.awarded && !w.winnerName && w.winnerId) {
-            const nm = nameByPurchaseId.get(String(w.winnerId)) || null;
-            return { ...w, winnerName: nm, name: nm };
-          }
-          return w;
+      // 6) Segundo enriquecimento:
+      // Para cada premiado sem nome, obter o purchaseId de duas fontes:
+      // (a) winnerId vindo do instantprizes (se vier)
+      // (b) purchaseIdByTicket (do /winners), quando winnerId não vier
+      const needs = winners.filter(w => w.awarded && !w.winnerName);
+      if (needs.length) {
+        const ids = new Set();
+        needs.forEach((w) => {
+          const pid = w.winnerId || purchaseIdByTicket.get(w.ticket) || null;
+          if (pid) ids.add(String(pid));
         });
+
+        if (ids.size) {
+          const results = await Promise.all(
+            Array.from(ids).map(async (pid) => {
+              try { return { pid, data: await getPurchase(pid) }; }
+              catch { return { pid, data: null }; }
+            })
+          );
+          const nameByPid = new Map(
+            results.map(({ pid, data }) => [pid, data?.customer?.name ?? null])
+          );
+
+          winners = winners.map((w) => {
+            if (w.awarded && !w.winnerName) {
+              const pid = w.winnerId || purchaseIdByTicket.get(w.ticket) || null;
+              const nm = pid ? nameByPid.get(String(pid)) || null : null;
+              return { ...w, winnerName: nm, name: nm };
+            }
+            return w;
+          });
+        }
       }
 
+      // 7) Estado final para a UI
       setPrize({
         id: raffle.id,
         name: raffle.name ?? raffle.title ?? 'Sorteio',
