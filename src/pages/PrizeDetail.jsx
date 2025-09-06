@@ -20,16 +20,14 @@ const PrizeDetail = () => {
   const { id } = useParams();
   const { prize, findWinnerByTicket, _utils } = useAppContext();
 
-  // helpers do contexto
   const { isAwarded, normTicket, ticketEq } = _utils;
 
-  // devolve os 2 primeiros nomes
   const twoNames = (s) => {
     const parts = String(s || '').trim().split(/\s+/);
     return parts.slice(0, 2).join(' ');
   };
 
-  // Chip de preço — removido emerald
+  // Chip de preço (sem verde)
   const PricePill = ({ amount: amountProp, prizeName }) => {
     const parseAmount = (input) => {
       const raw = String(input ?? '').trim();
@@ -74,11 +72,7 @@ const PrizeDetail = () => {
   const [quantity, setQuantity] = useState(MIN_QTY);
   const [selectedPrice, setSelectedPrice] = useState(0);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
-
-  // Pode ser um objeto ou um array de objetos (se o dialog aceita múltiplos)
   const [instantWinner, setInstantWinner] = useState(null);
-
-  // Tickets marcados como premiados localmente (UI otimista)
   const [awardedLocal, setAwardedLocal] = useState([]);
 
   React.useEffect(() => {
@@ -249,11 +243,11 @@ const PrizeDetail = () => {
                   </Button>
                 </div>
                 <Button
-                  className="bg-cyan-500 text-black font-bold 
-                       flex items-center justify-center gap-2 
-                       text-sm sm:text-base md:text-lg 
-                       px-4 sm:px-6 py-2 sm:py-3 
-                       rounded-lg hover:bg-cyan-400 w-full sm:w-auto"
+                  className="bg-cyan-500 text-black 
+                             font-bold flex items-center justify-center gap-2 
+                             text-sm sm:text-base md:text-lg 
+                             px-4 sm:px-6 py-2 sm:py-3 
+                             rounded-lg hover:bg-cyan-400 w-full sm:w-auto"
                   onClick={startCheckout}
                 >
                   <span>Participar</span>
@@ -303,11 +297,10 @@ const PrizeDetail = () => {
                     key={ticketLbl}
                     className={`rounded-xl transition shadow-sm ${
                       awardedFlag
-                        ? 'bg-gradient-to-r from-blue-700 to-blue-600 text-white' // sem verde quando premiado
+                        ? 'bg-gradient-to-r from-blue-700 to-blue-600 text-white'
                         : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                     }`}
                   >
-                    {/* grade responsiva */}
                     <div
                       className="
                         grid
@@ -319,11 +312,11 @@ const PrizeDetail = () => {
                         py-2
                       "
                     >
-                      {/* Número do bilhete (neutro) */}
+                      {/* Número do bilhete — APENAS TEXTO BRANCO */}
                       <span
-                        className="inline-flex h-9 w-20 sm:h-10 sm:w-24 items-center justify-center
-                                   font-mono font-bold rounded-md text-center
-                                   bg-gray-800 border border-gray-600 text-gray-300"
+                        className="h-9 sm:h-10 w-20 sm:w-24
+                                   flex items-center justify-center
+                                   font-mono font-bold text-white"
                       >
                         {ticketLbl}
                       </span>
@@ -347,11 +340,10 @@ const PrizeDetail = () => {
                             className="
                               inline-flex items-center gap-2
                               h-9 sm:h-10 px-2.5 rounded-full
-                              bg-gray-700/50 text-gray-200 ring-1 ring-gray-500/40
+                              bg-emerald-900/40 text-emerald-300 ring-1 ring-emerald-400/30
                               whitespace-nowrap
                             "
                           >
-                            {/* ícone mantém cor do texto */}
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor">
                               <path
                                 fillRule="evenodd"
