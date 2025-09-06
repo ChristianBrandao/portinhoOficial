@@ -11,7 +11,7 @@ import CheckoutDialog from '@/components/shared/CheckoutDialog';
 import { useAppContext } from '@/context/AppContext';
 import WinnerAnnouncementDialog from '@/components/shared/WinnerAnnouncementDialog';
 
-const MIN_QTY = 10;
+const MIN_QTY = 4;
 const MAX_QTY = 1000;
 const clamp = (v, min = MIN_QTY, max = MAX_QTY) => Math.min(max, Math.max(min, v ?? min));
 
@@ -66,7 +66,7 @@ const PrizeDetail = () => {
         <div
           className="
             inline-flex items-center gap-2 h-10 px-3 rounded-full text-white
-            bg-gradient-to-br from-emerald-400 via-emerald-500 to-cyan-400
+            bg-gradient-to-br from-emerald-300 via-emerald-400 to-cyan-300 bg-opacity-80
             ring-1 ring-white/10
             shadow-[0_6px_16px_rgba(34,211,238,0.18)]
           "
@@ -134,7 +134,7 @@ const PrizeDetail = () => {
   if (!prize) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center text-white">
-        Carregando...
+        Carregando rempdasorte...
       </div>
     );
   }
@@ -343,7 +343,7 @@ const PrizeDetail = () => {
                         }`}
                       >
                         {ticketLbl}
-                      </span>
+                      </span> 
 
                       {/* Preço (centro) */}
                       <div className="flex justify-center">
