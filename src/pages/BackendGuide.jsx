@@ -120,7 +120,7 @@ const BackendGuide = () => {
     return (
         <>
             <Helmet>
-                <title>Guia do Backend - Portinho</title>
+                <title>Guia do Backend - rempdasorte</title>
                 <meta name="description" content="Guia de implementação do backend e estrutura de tabelas para o projeto." />
             </Helmet>
             <div className="min-h-screen bg-gray-900 flex flex-col items-center">

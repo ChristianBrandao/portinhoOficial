@@ -13,11 +13,11 @@ import {
   SheetClose
 } from '@/components/ui/sheet';
 
-/* === LOGO: ícone do Instagram + texto "PortinhoPremio" === */
+/* === LOGO: ícone do Instagram + texto "rempdasorte" === */
 const Logo = () => (
   <div className="flex items-center gap-2">
     <Instagram aria-hidden className="h-7 w-7 text-white" />
-    <span className="text-2xl font-black tracking-wide text-white">PortinhoPremio</span>
+    <span className="text-2xl font-black tracking-wide text-white">rempdasorte</span>
   </div>
 );
 

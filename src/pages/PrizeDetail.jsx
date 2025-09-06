@@ -11,6 +11,10 @@ import CheckoutDialog from '@/components/shared/CheckoutDialog';
 import { useAppContext } from '@/context/AppContext';
 import WinnerAnnouncementDialog from '@/components/shared/WinnerAnnouncementDialog';
 
+const MIN_QTY = 10;
+const MAX_QTY = 1000;
+const clamp = (v, min = MIN_QTY, max = MAX_QTY) => Math.min(max, Math.max(min, v ?? min));
+
 const PrizeDetail = () => {
   const { toast } = useToast();
   const { id } = useParams();
@@ -25,12 +29,37 @@ const PrizeDetail = () => {
     return parts.slice(0, 2).join(' ');
   };
 
-  // Chip de preço proporcional (40px de altura)
-  const PricePill = ({ prizeName }) => {
-    const m = String(prizeName ?? '').match(/(\d{1,3}(?:[.\s]\d{3})*|\d+)(?:[,.](\d{2}))?/);
-    const amount = m
-      ? Number((m[1] || '0').replace(/[.\s]/g, '') + (m[2] ? `.${m[2]}` : ''))
-      : null;
+  // Chip de preço: prioriza número; se não houver, tenta parsear BR/US do texto
+  const PricePill = ({ amount: amountProp, prizeName }) => {
+    const parseAmount = (input) => {
+      const raw = String(input ?? '').trim();
+      if (!raw) return null;
+
+      // Se for só dígitos: inteiro
+      if (/^\d+$/.test(raw)) return Number(raw);
+
+      // Mantém só dígitos e separadores
+      const only = raw.replace(/[^\d.,]/g, '');
+
+      // Tem . e ,  -> assume . milhar e , decimal (3.000,50)
+      if (only.includes('.') && only.includes(',')) {
+        return Number(only.replace(/\./g, '').replace(',', '.'));
+      }
+      // Só vírgula -> vírgula é decimal (3000,50 / 300,00)
+      if (only.includes(',') && !only.includes('.')) {
+        return Number(only.replace(/\./g, '').replace(',', '.'));
+      }
+      // Só ponto -> checa se último ponto parece decimal; se tiver 3 dígitos após, trata como milhar (3.000)
+      if (only.includes('.') && !only.includes(',')) {
+        const lastDot = only.lastIndexOf('.');
+        const decimals = only.length - lastDot - 1;
+        return decimals === 3 ? Number(only.replace(/\./g, '')) : Number(only);
+      }
+      // Só dígitos (fallback)
+      return Number(only);
+    };
+
+    const amount = typeof amountProp === 'number' ? amountProp : parseAmount(prizeName);
 
     return (
       <div className="flex justify-center">
@@ -44,7 +73,9 @@ const PrizeDetail = () => {
         >
           <span className="text-xs opacity-95">R$</span>
           <span className="text-xl font-black tracking-wide">
-            {amount != null ? amount.toLocaleString('pt-BR') : String(prizeName ?? '—')}
+            {amount != null
+              ? amount.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
+              : String(prizeName ?? '—')}
           </span>
         </div>
       </div>
@@ -53,8 +84,8 @@ const PrizeDetail = () => {
 
   const raffleId = prize?.id || id;
 
-  const [quantity, setQuantity] = useState(10);
-  const [selectedPrice, setSelectedPrice] = useState(0.2);
+  const [quantity, setQuantity] = useState(MIN_QTY);
+  const [selectedPrice, setSelectedPrice] = useState(0);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
 
   // Pode ser um objeto ou um array de objetos (se o dialog aceita múltiplos)
@@ -65,8 +96,9 @@ const PrizeDetail = () => {
 
   React.useEffect(() => {
     if (prize) {
-      setQuantity(10);
-      setSelectedPrice(10 * prize.pricePerTicket);
+      const q = MIN_QTY;
+      setQuantity(q);
+      setSelectedPrice(q * prize.pricePerTicket);
     }
   }, [prize]);
 
@@ -81,11 +113,12 @@ const PrizeDetail = () => {
   };
 
   const handleSelectTitles = (titles, price) => {
-    setQuantity(titles);
-    setSelectedPrice(price);
+    const q = clamp(titles);
+    setQuantity(q);
+    setSelectedPrice(q * (prize?.pricePerTicket ?? 0));
     toast({
       title: 'Seleção atualizada!',
-      description: `Você selecionou ${titles} títulos por R$ ${price.toFixed(2).replace('.', ',')}.`,
+      description: `Você selecionou ${q} títulos por R$ ${(q * (prize?.pricePerTicket ?? 0)).toFixed(2).replace('.', ',')}.`,
     });
   };
 
@@ -197,49 +230,53 @@ const PrizeDetail = () => {
                     size="icon"
                     className="bg-gray-600 text-white hover:bg-gray-500"
                     onClick={() => {
-                      const newQty = Math.max(5, quantity - 1);
+                      const newQty = clamp(quantity - 1);
                       setQuantity(newQty);
                       setSelectedPrice(newQty * prize.pricePerTicket);
                     }}
                   >
                     <Minus />
                   </Button>
-                <input
-                  type="number"
-                  value={quantity}
-                  onChange={(e) => {
-                    const newQty = Math.max(1, parseInt(e.target.value) || 0);
-                    setQuantity(newQty);
-                    setSelectedPrice(newQty * prize.pricePerTicket);
-                  }}
-                  className="w-16 text-center bg-gray-900 text-white rounded-md py-2"
-                />
+                  <input
+                    type="number"
+                    value={quantity}
+                    min={MIN_QTY}
+                    max={MAX_QTY}
+                    onChange={(e) => {
+                      const parsed = parseInt(e.target.value, 10);
+                      const newQty = clamp(Number.isFinite(parsed) ? parsed : MIN_QTY);
+                      setQuantity(newQty);
+                      setSelectedPrice(newQty * prize.pricePerTicket);
+                    }}
+                    className="w-20 text-center bg-gray-900 text-white rounded-md py-2"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="bg-gray-600 text-white hover:bg-gray-500"
+                    onClick={() => {
+                      const newQty = clamp(quantity + 1);
+                      setQuantity(newQty);
+                      setSelectedPrice(newQty * prize.pricePerTicket);
+                    }}
+                  >
+                    <Plus />
+                  </Button>
+                </div>
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  className="bg-gray-600 text-white hover:bg-gray-500"
-                  onClick={() => {
-                    const newQty = quantity + 1;
-                    setQuantity(newQty);
-                    setSelectedPrice(newQty * prize.pricePerTicket);
-                  }}
-                >
-                  <Plus />
-                </Button>
-              </div>
-              <Button
-                className="bg-cyan-500 text-black font-bold 
+                  className="bg-cyan-500 text-black font-bold 
                        flex items-center justify-center gap-2 
                        text-sm sm:text-base md:text-lg 
                        px-4 sm:px-6 py-2 sm:py-3 
                        rounded-lg hover:bg-cyan-400 w-full sm:w-auto"
-                onClick={startCheckout}
-              >
-                <span>Participar</span>
-                <span className="font-extrabold">R$ {selectedPrice.toFixed(2).replace('.', ',')}</span>
-              </Button>
+                  onClick={startCheckout}
+                >
+                  <span>Participar</span>
+                  <span className="font-extrabold">R$ {selectedPrice.toFixed(2).replace('.', ',')}</span>
+                </Button>
+              </div>
             </div>
-          </div>
+          </motion.div>
 
           {/* TÍTULOS PREMIADOS */}
           <div className="bg-gray-800 rounded-lg shadow-sm p-4 mb-6">
@@ -310,7 +347,7 @@ const PrizeDetail = () => {
 
                       {/* Preço (centro) */}
                       <div className="flex justify-center">
-                        <PricePill prizeName={winner.prizeName || 'R$ 3000'} />
+                        <PricePill amount={winner.prizeAmount} prizeName={winner.prizeName || 'R$ 3000'} />
                       </div>
 
                       {/* Status / Ganhador */}
@@ -368,86 +405,85 @@ const PrizeDetail = () => {
               </a>
             </p>
           </div>
-        </motion.div>
-      </main>
+        </main>
 
-      <Button
-        onClick={handleFeatureClick}
-        className="fixed bottom-6 right-6 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg h-14 px-6 flex items-center gap-2 text-lg"
-      >
-        <MessageSquare />
-        WhatsApp
-      </Button>
+        <Button
+          onClick={handleFeatureClick}
+          className="fixed bottom-6 right-6 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg h-14 px-6 flex items-center gap-2 text-lg"
+        >
+          <MessageSquare />
+          WhatsApp
+        </Button>
 
-      <CheckoutDialog
-        isOpen={isCheckoutOpen}
-        setIsOpen={setIsCheckoutOpen}
-        raffleId={raffleId}
-        unitPrice={prize.pricePerTicket}
-        quantity={quantity}
-        totalPrice={selectedPrice}
-        productName={prize.name}
-        onPaymentSuccess={(data) => {
-          // Normaliza múltiplos tickets e prêmios
-          const tickets =
-            Array.isArray(data.winningTickets) && data.winningTickets.length
-              ? data.winningTickets.map(normTicket)
-              : data.winningTicket
-              ? [normTicket(data.winningTicket)]
-              : [];
+        <CheckoutDialog
+          isOpen={isCheckoutOpen}
+          setIsOpen={setIsCheckoutOpen}
+          raffleId={raffleId}
+          unitPrice={prize.pricePerTicket}
+          quantity={quantity}
+          totalPrice={selectedPrice}
+          productName={prize.name}
+          onPaymentSuccess={(data) => {
+            // Normaliza múltiplos tickets e prêmios
+            const tickets =
+              Array.isArray(data.winningTickets) && data.winningTickets.length
+                ? data.winningTickets.map(normTicket)
+                : data.winningTicket
+                ? [normTicket(data.winningTicket)]
+                : [];
 
-          const instantPrizes =
-            Array.isArray(data.instantPrizes) && data.instantPrizes.length
-              ? data.instantPrizes.map((ip) => ({ ...ip, ticket: normTicket(ip.ticket) }))
-              : data.instantPrizeName && data.winningTicket
-              ? [{ ticket: normTicket(data.winningTicket), prizeName: data.instantPrizeName }]
-              : [];
+            const instantPrizes =
+              Array.isArray(data.instantPrizes) && data.instantPrizes.length
+                ? data.instantPrizes.map((ip) => ({ ...ip, ticket: normTicket(ip.ticket) }))
+                : data.instantPrizeName && data.winningTicket
+                ? [{ ticket: normTicket(data.winningTicket), prizeName: data.instantPrizeName }]
+                : [];
 
-          if (!tickets.length) {
-            toast({
-              title: 'Pagamento confirmado',
-              description: 'Nenhum prêmio nesta compra.',
+            if (!tickets.length) {
+              toast({
+                title: 'Pagamento confirmado',
+                description: 'Nenhum prêmio nesta compra.',
+              });
+              return;
+            }
+
+            // Marca localmente todos os tickets como premiados (UI otimista)
+            setAwardedLocal((prev) => {
+              const set = new Set(prev);
+              tickets.forEach((t) => set.add(t));
+              return Array.from(set);
             });
-            return;
-          }
 
-          // Marca localmente todos os tickets como premiados (UI otimista)
-          setAwardedLocal((prev) => {
-            const set = new Set(prev);
-            tickets.forEach((t) => set.add(t));
-            return Array.from(set);
-          });
+            // Mapeia os vencedores para abrir o diálogo
+            const winnersLocal = tickets
+              .map((t) => {
+                const local = (prize.winners || []).find((w) => ticketEq(ticketFromWinner(w), t));
+                const byCtx = local || findWinnerByTicket?.(t) || null;
+                if (byCtx) return byCtx;
 
-          // Mapeia os vencedores para abrir o diálogo
-          const winnersLocal = tickets
-            .map((t) => {
-              const local = (prize.winners || []).find((w) => ticketEq(ticketFromWinner(w), t));
-              const byCtx = local || findWinnerByTicket?.(t) || null;
-              if (byCtx) return byCtx;
+                // fallback quando ainda não refletiu no contexto
+                const prName =
+                  instantPrizes.find((ip) => ticketEq(ip.ticket, t))?.prizeName ||
+                  data.instantPrizeName ||
+                  'Prêmio Instantâneo';
+                return {
+                  ticket: t,
+                  prizeName: prName,
+                  ticketNumber: t,
+                  isAwarded: true,
+                  name: '',
+                };
+              })
+              .filter(Boolean);
 
-              // fallback quando ainda não refletiu no contexto
-              const prName =
-                instantPrizes.find((ip) => ticketEq(ip.ticket, t))?.prizeName ||
-                data.instantPrizeName ||
-                'Prêmio Instantâneo';
-              return {
-                ticket: t,
-                prizeName: prName,
-                ticketNumber: t,
-                isAwarded: true,
-                name: '',
-              };
-            })
-            .filter(Boolean);
+            setInstantWinner(winnersLocal.length > 1 ? winnersLocal : winnersLocal[0]);
+          }}
+        />
 
-          setInstantWinner(winnersLocal.length > 1 ? winnersLocal : winnersLocal[0]);
-        }}
-      />
-
-      <WinnerAnnouncementDialog isOpen={!!instantWinner} setIsOpen={() => setInstantWinner(null)} winner={instantWinner} />
-    </div>
-  </>
-);
+        <WinnerAnnouncementDialog isOpen={!!instantWinner} setIsOpen={() => setInstantWinner(null)} winner={instantWinner} />
+      </div>
+    </>
+  );
 };
 
 export default PrizeDetail;

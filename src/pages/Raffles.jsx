@@ -87,9 +87,9 @@ const Raffles = () => {
   return (
     <>
       <Helmet>
-        <title>Sorteios - Portinho</title>
+        <title>Sorteios - rempdasorte</title>
         <meta name="description" content="Veja todos os sorteios ativos, concluídos e em breve." />
-        <meta property="og:title" content="Sorteios - Portinho" />
+        <meta property="og:title" content="Sorteios - rempdasorte" />
         <meta property="og:description" content="Veja todos os sorteios ativos, concluídos e em breve." />
       </Helmet>
 

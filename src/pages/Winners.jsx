@@ -101,7 +101,7 @@ const Winners = () => {
   return (
     <>
       <Helmet>
-        <title>Ganhadores - Portinho</title>
+        <title>Ganhadores - rempdasorte</title>
         <meta name="description" content="Confira a lista de todos os ganhadores dos nossos sorteios." />
       </Helmet>
 

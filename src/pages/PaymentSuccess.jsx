@@ -43,7 +43,7 @@ const PaymentSuccess = () => {
   return (
     <>
       <Helmet>
-        <title>Pagamento Confirmado - Portinho</title>
+        <title>Pagamento Confirmado - rempdasorte</title>
         <meta name="description" content="Seu pagamento foi confirmado com sucesso!" />
       </Helmet>
 

@@ -28,9 +28,9 @@ function Home() {
   return (
     <>
       <Helmet>
-        <title>Portinho - Sorteios e Prêmios</title>
+        <title>rempdasorte - Sorteios e Prêmios</title>
         <meta name="description" content="Participe dos nossos sorteios e ganhe prêmios incríveis como motocicletas 0km, iPhones e mais!" />
-        <meta property="og:title" content="Portinho - Sorteios e Prêmios" />
+        <meta property="og:title" content="rempdasorte - Sorteios e Prêmios" />
         <meta property="og:description" content="Participe dos nossos sorteios e ganhe prêmios incríveis como motocicletas 0km, iPhones e mais!" />
       </Helmet>
       
