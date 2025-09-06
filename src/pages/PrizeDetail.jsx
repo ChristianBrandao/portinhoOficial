@@ -29,33 +29,20 @@ const PrizeDetail = () => {
     return parts.slice(0, 2).join(' ');
   };
 
-  // Chip de preço: prioriza número; se não houver, tenta parsear BR/US do texto
+  // Chip de preço — removido emerald
   const PricePill = ({ amount: amountProp, prizeName }) => {
     const parseAmount = (input) => {
       const raw = String(input ?? '').trim();
       if (!raw) return null;
-
-      // Se for só dígitos: inteiro
       if (/^\d+$/.test(raw)) return Number(raw);
-
-      // Mantém só dígitos e separadores
       const only = raw.replace(/[^\d.,]/g, '');
-
-      // Tem . e ,  -> assume . milhar e , decimal (3.000,50)
-      if (only.includes('.') && only.includes(',')) {
-        return Number(only.replace(/\./g, '').replace(',', '.'));
-      }
-      // Só vírgula -> vírgula é decimal (3000,50 / 300,00)
-      if (only.includes(',') && !only.includes('.')) {
-        return Number(only.replace(/\./g, '').replace(',', '.'));
-      }
-      // Só ponto -> checa se último ponto parece decimal; se tiver 3 dígitos após, trata como milhar (3.000)
+      if (only.includes('.') && only.includes(',')) return Number(only.replace(/\./g, '').replace(',', '.'));
+      if (only.includes(',') && !only.includes('.')) return Number(only.replace(/\./g, '').replace(',', '.'));
       if (only.includes('.') && !only.includes(',')) {
         const lastDot = only.lastIndexOf('.');
         const decimals = only.length - lastDot - 1;
         return decimals === 3 ? Number(only.replace(/\./g, '')) : Number(only);
       }
-      // Só dígitos (fallback)
       return Number(only);
     };
 
@@ -66,9 +53,9 @@ const PrizeDetail = () => {
         <div
           className="
             inline-flex items-center gap-2 h-10 px-3 rounded-full text-white
-            bg-gradient-to-br from-emerald-300 via-emerald-400 to-cyan-300 bg-opacity-80
+            bg-gradient-to-br from-cyan-400 via-sky-400 to-blue-400
             ring-1 ring-white/10
-            shadow-[0_6px_16px_rgba(34,211,238,0.18)]
+            shadow-[0_6px_16px_rgba(56,189,248,0.18)]
           "
         >
           <span className="text-xs opacity-95">R$</span>
@@ -102,7 +89,6 @@ const PrizeDetail = () => {
     }
   }, [prize]);
 
-  // bilhete (string) a partir de um item de winners/instantprizes
   const ticketFromWinner = (w) => normTicket(w.ticketNumber ?? w.ticket ?? w.id ?? '');
 
   const handleFeatureClick = () => {
@@ -112,15 +98,13 @@ const PrizeDetail = () => {
     });
   };
 
-  const handleSelectTitles = (titles, price) => {
+  const handleSelectTitles = (titles) => {
     const q = clamp(titles);
     setQuantity(q);
     setSelectedPrice(q * (prize?.pricePerTicket ?? 0));
     toast({
       title: 'Seleção atualizada!',
-      description: `Você selecionou ${q} títulos por R$ ${(q * (prize?.pricePerTicket ?? 0))
-        .toFixed(2)
-        .replace('.', ',')}.`,
+      description: `Você selecionou ${q} títulos por R$ ${(q * (prize?.pricePerTicket ?? 0)).toFixed(2).replace('.', ',')}.`,
     });
   };
 
@@ -144,7 +128,6 @@ const PrizeDetail = () => {
   const titleOptions = prize.titleOptions || [];
   const winners = prize.winners || [];
 
-  // total e disponíveis (detecção robusta)
   const totalPrizes = winners.length;
   const availablePrizes = winners.filter(
     (w) => !isAwarded(w.awarded ?? w.isAwarded ?? w.awardedAt ?? w.winnerId),
@@ -309,7 +292,6 @@ const PrizeDetail = () => {
               {winners.map((winner) => {
                 const ticketLbl = ticketFromWinner(winner);
 
-                // flags remoto e local
                 const awardedFlagRemote = isAwarded(
                   winner.awarded ?? winner.isAwarded ?? winner.awardedAt ?? winner.winnerId,
                 );
@@ -321,11 +303,11 @@ const PrizeDetail = () => {
                     key={ticketLbl}
                     className={`rounded-xl transition shadow-sm ${
                       awardedFlag
-                        ? 'bg-gradient-to-r from-emerald-700 to-emerald-600 text-white'
+                        ? 'bg-gradient-to-r from-blue-700 to-blue-600 text-white' // sem verde quando premiado
                         : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                     }`}
                   >
-                    {/* grade responsiva: mobile cabe em 360px; em sm volta ao layout amplo */}
+                    {/* grade responsiva */}
                     <div
                       className="
                         grid
@@ -337,7 +319,7 @@ const PrizeDetail = () => {
                         py-2
                       "
                     >
-                      {/* Número do bilhete (SEM EMERALD) */}
+                      {/* Número do bilhete (neutro) */}
                       <span
                         className="inline-flex h-9 w-20 sm:h-10 sm:w-24 items-center justify-center
                                    font-mono font-bold rounded-md text-center
@@ -346,7 +328,7 @@ const PrizeDetail = () => {
                         {ticketLbl}
                       </span>
 
-                      {/* Preço (centro) */}
+                      {/* Preço */}
                       <div className="flex justify-center">
                         <PricePill amount={winner.prizeAmount} prizeName={winner.prizeName || 'R$ 3000'} />
                       </div>
@@ -365,10 +347,11 @@ const PrizeDetail = () => {
                             className="
                               inline-flex items-center gap-2
                               h-9 sm:h-10 px-2.5 rounded-full
-                              bg-emerald-900/40 text-emerald-300 ring-1 ring-emerald-400/30
+                              bg-gray-700/50 text-gray-200 ring-1 ring-gray-500/40
                               whitespace-nowrap
                             "
                           >
+                            {/* ícone mantém cor do texto */}
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 sm:h-5 sm:w-5" viewBox="0 0 20 20" fill="currentColor">
                               <path
                                 fillRule="evenodd"
@@ -408,8 +391,6 @@ const PrizeDetail = () => {
           </div>
         </main>
 
-
-
         <CheckoutDialog
           isOpen={isCheckoutOpen}
           setIsOpen={setIsCheckoutOpen}
@@ -419,7 +400,6 @@ const PrizeDetail = () => {
           totalPrice={selectedPrice}
           productName={prize.name}
           onPaymentSuccess={(data) => {
-            // Normaliza múltiplos tickets e prêmios
             const tickets =
               Array.isArray(data.winningTickets) && data.winningTickets.length
                 ? data.winningTickets.map(normTicket)
@@ -435,39 +415,26 @@ const PrizeDetail = () => {
                 : [];
 
             if (!tickets.length) {
-              toast({
-                title: 'Pagamento confirmado',
-                description: 'Nenhum prêmio nesta compra.',
-              });
+              toast({ title: 'Pagamento confirmado', description: 'Nenhum prêmio nesta compra.' });
               return;
             }
 
-            // Marca localmente todos os tickets como premiados (UI otimista)
             setAwardedLocal((prev) => {
               const set = new Set(prev);
               tickets.forEach((t) => set.add(t));
               return Array.from(set);
             });
 
-            // Mapeia os vencedores para abrir o diálogo
             const winnersLocal = tickets
               .map((t) => {
                 const local = (prize.winners || []).find((w) => ticketEq(ticketFromWinner(w), t));
                 const byCtx = local || findWinnerByTicket?.(t) || null;
                 if (byCtx) return byCtx;
-
-                // fallback quando ainda não refletiu no contexto
                 const prName =
                   instantPrizes.find((ip) => ticketEq(ip.ticket, t))?.prizeName ||
                   data.instantPrizeName ||
                   'Prêmio Instantâneo';
-                return {
-                  ticket: t,
-                  prizeName: prName,
-                  ticketNumber: t,
-                  isAwarded: true,
-                  name: '',
-                };
+                return { ticket: t, prizeName: prName, ticketNumber: t, isAwarded: true, name: '' };
               })
               .filter(Boolean);
 
