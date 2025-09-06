@@ -310,7 +310,7 @@ const PrizeDetail = () => {
 
                       {/* Preço (centro) */}
                       <div className="flex justify-center">
-                        <PricePill prizeName={winner.prizeName || 'R$ 2000'} />
+                        <PricePill prizeName={winner.prizeName || 'R$ 3000'} />
                       </div>
 
                       {/* Status / Ganhador */}
