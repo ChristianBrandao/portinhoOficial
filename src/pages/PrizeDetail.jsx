@@ -118,7 +118,9 @@ const PrizeDetail = () => {
     setSelectedPrice(q * (prize?.pricePerTicket ?? 0));
     toast({
       title: 'Seleção atualizada!',
-      description: `Você selecionou ${q} títulos por R$ ${(q * (prize?.pricePerTicket ?? 0)).toFixed(2).replace('.', ',')}.`,
+      description: `Você selecionou ${q} títulos por R$ ${(q * (prize?.pricePerTicket ?? 0))
+        .toFixed(2)
+        .replace('.', ',')}.`,
     });
   };
 
@@ -318,7 +320,9 @@ const PrizeDetail = () => {
                   <div
                     key={ticketLbl}
                     className={`rounded-xl transition shadow-sm ${
-                      awardedFlag ? 'bg-gradient-to-r from-emerald-700 to-emerald-600 text-white' : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
+                      awardedFlag
+                        ? 'bg-gradient-to-r from-emerald-700 to-emerald-600 text-white'
+                        : 'bg-gray-700 text-gray-200 hover:bg-gray-600'
                     }`}
                   >
                     {/* grade responsiva: mobile cabe em 360px; em sm volta ao layout amplo */}
@@ -333,17 +337,14 @@ const PrizeDetail = () => {
                         py-2
                       "
                     >
-                      {/* Número do bilhete */}
+                      {/* Número do bilhete (SEM EMERALD) */}
                       <span
-                        className={`inline-flex h-9 w-20 sm:h-10 sm:w-24 items-center justify-center
-                                    font-mono font-bold rounded-md text-center ${
-                          awardedFlag
-                            ? 'bg-emerald-900 border border-emerald-400 text-emerald-100'
-                            : 'bg-gray-800 border border-gray-600 text-gray-300'
-                        }`}
+                        className="inline-flex h-9 w-20 sm:h-10 sm:w-24 items-center justify-center
+                                   font-mono font-bold rounded-md text-center
+                                   bg-gray-800 border border-gray-600 text-gray-300"
                       >
                         {ticketLbl}
-                      </span> 
+                      </span>
 
                       {/* Preço (centro) */}
                       <div className="flex justify-center">
@@ -407,13 +408,7 @@ const PrizeDetail = () => {
           </div>
         </main>
 
-        <Button
-          onClick={handleFeatureClick}
-          className="fixed bottom-6 right-6 bg-green-500 hover:bg-green-600 text-white rounded-full shadow-lg h-14 px-6 flex items-center gap-2 text-lg"
-        >
-          <MessageSquare />
-          WhatsApp
-        </Button>
+
 
         <CheckoutDialog
           isOpen={isCheckoutOpen}
