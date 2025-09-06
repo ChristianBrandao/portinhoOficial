@@ -27,7 +27,7 @@ const PrizeDetail = () => {
     return parts.slice(0, 2).join(' ');
   };
 
-  // Chip de preço (sem verde)
+  // Chip de preço — SEM AZUL (neutro)
   const PricePill = ({ amount: amountProp, prizeName }) => {
     const parseAmount = (input) => {
       const raw = String(input ?? '').trim();
@@ -50,10 +50,8 @@ const PrizeDetail = () => {
       <div className="flex justify-center">
         <div
           className="
-            inline-flex items-center gap-2 h-10 px-3 rounded-full text-white
-            bg-gradient-to-br from-cyan-400 via-sky-400 to-blue-400
-            ring-1 ring-white/10
-            shadow-[0_6px_16px_rgba(56,189,248,0.18)]
+            inline-flex items-center gap-2 h-10 px-3 rounded-full
+            text-white bg-gray-700 ring-1 ring-white/10 shadow-none
           "
         >
           <span className="text-xs opacity-95">R$</span>
@@ -86,10 +84,7 @@ const PrizeDetail = () => {
   const ticketFromWinner = (w) => normTicket(w.ticketNumber ?? w.ticket ?? w.id ?? '');
 
   const handleFeatureClick = () => {
-    toast({
-      title:
-        '🚧 Este recurso ainda não foi implementado—mas não se preocupe! Você pode solicitá-lo no seu próximo prompt! 🚀',
-    });
+    toast({ title: '🚧 Em breve 🚀' });
   };
 
   const handleSelectTitles = (titles) => {
@@ -131,15 +126,9 @@ const PrizeDetail = () => {
     <>
       <Helmet>
         <title>Detalhes do Prêmio - {prize.name}</title>
-        <meta
-          name="description"
-          content={`Participe do sorteio ${prize.name} por apenas R$ ${prize.pricePerTicket.toFixed(2)}.`}
-        />
+        <meta name="description" content={`Participe do sorteio ${prize.name} por apenas R$ ${prize.pricePerTicket.toFixed(2)}.`} />
         <meta property="og:title" content={`Detalhes do Prêmio - ${prize.name}`} />
-        <meta
-          property="og:description"
-          content={`Participe do sorteio ${prize.name} por apenas R$ ${prize.pricePerTicket.toFixed(2)}.`}
-        />
+        <meta property="og:description" content={`Participe do sorteio ${prize.name} por apenas R$ ${prize.pricePerTicket.toFixed(2)}.`} />
       </Helmet>
 
       <div className="min-h-screen bg-gray-900 flex flex-col items-center">
@@ -243,8 +232,8 @@ const PrizeDetail = () => {
                   </Button>
                 </div>
                 <Button
-                  className="bg-cyan-500 text-black 
-                             font-bold flex items-center justify-center gap-2 
+                  className="bg-cyan-500 text-black font-bold 
+                             flex items-center justify-center gap-2 
                              text-sm sm:text-base md:text-lg 
                              px-4 sm:px-6 py-2 sm:py-3 
                              rounded-lg hover:bg-cyan-400 w-full sm:w-auto"
@@ -312,16 +301,16 @@ const PrizeDetail = () => {
                         py-2
                       "
                     >
-                      {/* Número do bilhete — APENAS TEXTO BRANCO */}
+                      {/* Número do bilhete — manter glow/realce AZUL */}
                       <span
-                        className="h-9 sm:h-10 w-20 sm:w-24
-                                   flex items-center justify-center
-                                   font-mono font-bold text-white"
+                        className="inline-flex h-9 w-20 sm:h-10 sm:w-24 items-center justify-center
+                                   font-mono font-bold text-white rounded-md
+                                   bg-gray-900/80 border border-cyan-400/40 ring-1 ring-cyan-400/30"
                       >
                         {ticketLbl}
                       </span>
 
-                      {/* Preço */}
+                      {/* Preço — sem azul */}
                       <div className="flex justify-center">
                         <PricePill amount={winner.prizeAmount} prizeName={winner.prizeName || 'R$ 3000'} />
                       </div>
@@ -336,6 +325,7 @@ const PrizeDetail = () => {
                             </span>
                           </div>
                         ) : (
+                          // VERDINHO de volta
                           <div
                             className="
                               inline-flex items-center gap-2
@@ -366,8 +356,7 @@ const PrizeDetail = () => {
           <div className="bg-gray-800 rounded-lg shadow-sm p-4 text-gray-400 space-y-3 h-48 overflow-y-auto text-sm">
             <p className="font-bold">Proibido a venda para menores de 18 anos!</p>
             <p>
-              Ação totalmente instantânea, achando qualquer bilhete premiado disponível você recebe uma ligação e recebe seus
-              prêmios!
+              Ação totalmente instantânea, achando qualquer bilhete premiado disponível você recebe uma ligação e recebe seus prêmios!
             </p>
             <p>Qualquer dúvida ou problema chamar no suporte via WhatsApp.</p>
             <p>Boa sorte!</p>
