@@ -27,16 +27,27 @@ const PrizeDetail = () => {
     return parts.slice(0, 2).join(' ');
   };
 
-  // Chip de preço — SEM AZUL (neutro)
+  // Chip de preço — SEM AZUL (neutro) e sem "zerar" quando não há valor
   const PricePill = ({ amount: amountProp, prizeName }) => {
     const parseAmount = (input) => {
       const raw = String(input ?? '').trim();
       if (!raw) return null;
-      if (/^\d+$/.test(raw)) return Number(raw);
+
+      // mantém apenas dígitos e separadores
       const only = raw.replace(/[^\d.,]/g, '');
-      if (only.includes('.') && only.includes(',')) return Number(only.replace(/\./g, '').replace(',', '.'));
-      if (only.includes(',') && !only.includes('.')) return Number(only.replace(/\./g, '').replace(',', '.'));
+      // se não sobrou nenhum dígito, não há valor numérico
+      if (!/\d/.test(only)) return null;
+
+      if (only.includes('.') && only.includes(',')) {
+        // 3.000,50 -> 3000.50
+        return Number(only.replace(/\./g, '').replace(',', '.'));
+      }
+      if (only.includes(',') && !only.includes('.')) {
+        // 3000,50 -> 3000.50
+        return Number(only.replace(/\./g, '').replace(',', '.'));
+      }
       if (only.includes('.') && !only.includes(',')) {
+        // se o último ponto parece milhar (3 dígitos depois), remove milhar
         const lastDot = only.lastIndexOf('.');
         const decimals = only.length - lastDot - 1;
         return decimals === 3 ? Number(only.replace(/\./g, '')) : Number(only);
@@ -44,22 +55,25 @@ const PrizeDetail = () => {
       return Number(only);
     };
 
-    const amount = typeof amountProp === 'number' ? amountProp : parseAmount(prizeName);
+    // prioriza valor numérico direto; se não houver, tenta extrair do nome
+    const amount =
+      (typeof amountProp === 'number' && Number.isFinite(amountProp)) ? amountProp : parseAmount(prizeName);
+    const isNumeric = Number.isFinite(amount);
 
     return (
       <div className="flex justify-center">
-        <div
-          className="
-            inline-flex items-center gap-2 h-10 px-3 rounded-full
-            text-white bg-gray-700 ring-1 ring-white/10 shadow-none
-          "
-        >
-          <span className="text-xs opacity-95">R$</span>
-          <span className="text-xl font-black tracking-wide">
-            {amount != null
-              ? amount.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })
-              : String(prizeName ?? '—')}
-          </span>
+        <div className="inline-flex items-center gap-2 h-10 px-3 rounded-full text-white bg-gray-700 ring-1 ring-white/10 shadow-none">
+          {isNumeric ? (
+            <>
+              <span className="text-xs opacity-95">R$</span>
+              <span className="text-xl font-black tracking-wide">
+                {amount.toLocaleString('pt-BR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+              </span>
+            </>
+          ) : (
+            // Sem valor numérico (ex.: "CNH") -> mostra o nome sem "R$"
+            <span className="text-sm font-bold tracking-wide">{String(prizeName ?? '—')}</span>
+          )}
         </div>
       </div>
     );
@@ -301,7 +315,7 @@ const PrizeDetail = () => {
                         py-2
                       "
                     >
-                      {/* Número do bilhete — manter glow/realce AZUL */}
+                      {/* Número da sorte — mantém realce/borda AZUL */}
                       <span
                         className="inline-flex h-9 w-20 sm:h-10 sm:w-24 items-center justify-center
                                    font-mono font-bold text-white rounded-md
@@ -310,7 +324,7 @@ const PrizeDetail = () => {
                         {ticketLbl}
                       </span>
 
-                      {/* Preço — sem azul */}
+                      {/* Preço/Prêmio — neutro; se não for valor, mostra o nome (ex.: CNH) */}
                       <div className="flex justify-center">
                         <PricePill amount={winner.prizeAmount} prizeName={winner.prizeName || 'R$ 3000'} />
                       </div>
@@ -325,7 +339,7 @@ const PrizeDetail = () => {
                             </span>
                           </div>
                         ) : (
-                          // VERDINHO de volta
+                          // Disponível — verdinho
                           <div
                             className="
                               inline-flex items-center gap-2
@@ -423,7 +437,11 @@ const PrizeDetail = () => {
           }}
         />
 
-        <WinnerAnnouncementDialog isOpen={!!instantWinner} setIsOpen={() => setInstantWinner(null)} winner={instantWinner} />
+        <WinnerAnnouncementDialog
+          isOpen={!!instantWinner}
+          setIsOpen={() => setInstantWinner(null)}
+          winner={instantWinner}
+        />
       </div>
     </>
   );
