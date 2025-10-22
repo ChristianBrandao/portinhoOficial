@@ -17,29 +17,17 @@ const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // se você envia o telefone a partir da tela anterior:
   const prefillPhone = location.state?.phone || '';
 
   const [name, setName] = useState('');
   const [phone, setPhone] = useState(prefillPhone);
   const [cpf, setCpf] = useState('');
-  const [email, setEmail] = useState('');
-
-  // endereço
-  const [zip, setZip] = useState('');
-  const [street, setStreet] = useState('');
-  const [number, setNumber] = useState('');
-  const [district, setDistrict] = useState('');
-  const [city, setCity] = useState('');
-  const [stateUF, setStateUF] = useState('');
-
   const [loading, setLoading] = useState(false);
 
   const onSubmit = async (e) => {
     e.preventDefault();
     const phoneDigits = onlyDigits(phone);
     const cpfDigits = onlyDigits(cpf);
-    const zipDigits = onlyDigits(zip);
 
     if (!/^\d{10,11}$/.test(phoneDigits)) {
       toast({ title: 'Telefone inválido', description: 'Use DDD + número.', variant: 'destructive' });
@@ -53,30 +41,16 @@ const Register = () => {
       toast({ title: 'Nome obrigatório', variant: 'destructive' });
       return;
     }
-    if (!street.trim() || !number.trim() || !district.trim() || !city.trim() || !stateUF.trim()) {
-      toast({ title: 'Endereço incompleto', description: 'Preencha todos os campos do endereço.', variant: 'destructive' });
-      return;
-    }
 
     setLoading(true);
     try {
       await registerUser({
         name: name.trim(),
-        email: email.trim() || undefined,
         phone: phoneDigits,
-        cpf: cpfDigits,                          // <<=== CPF indo pro backend
-        address: {
-          zip: zipDigits || undefined,
-          street,
-          number,
-          district,
-          city,
-          state: stateUF.toUpperCase(),
-        },
+        cpf: cpfDigits,
       });
 
       toast({ title: 'Cadastro concluído!', description: 'Agora você já pode finalizar sua compra.' });
-      // Volta para o fluxo (ex.: para checkout)
       navigate(-1);
     } catch (err) {
       console.error(err);
@@ -107,6 +81,7 @@ const Register = () => {
           >
             <h1 className="text-xl font-bold text-gray-100">Finalize seu cadastro</h1>
 
+            {/* Nome */}
             <div className="grid gap-3">
               <label className="text-xs text-gray-400">Nome completo</label>
               <Input
@@ -118,17 +93,7 @@ const Register = () => {
               />
             </div>
 
-            <div className="grid gap-3">
-              <label className="text-xs text-gray-400">E-mail (opcional)</label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="voce@exemplo.com"
-                className="bg-gray-700 text-gray-100 border-gray-600 placeholder:text-gray-500"
-              />
-            </div>
-
+            {/* Telefone */}
             <div className="grid gap-3">
               <label className="text-xs text-gray-400">Telefone</label>
               <InputMask mask="(99) 99999-9999" value={phone} onChange={(e) => setPhone(e.target.value)}>
@@ -143,7 +108,7 @@ const Register = () => {
               </InputMask>
             </div>
 
-            {/* CPF OBRIGATÓRIO */}
+            {/* CPF */}
             <div className="grid gap-3">
               <label className="text-xs text-gray-400">CPF</label>
               <InputMask mask="999.999.999-99" value={cpf} onChange={(e) => setCpf(e.target.value)}>
@@ -158,72 +123,7 @@ const Register = () => {
               </InputMask>
             </div>
 
-            {/* ENDEREÇO */}
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div className="grid gap-2">
-                <label className="text-xs text-gray-400">CEP</label>
-                <InputMask mask="99999-999" value={zip} onChange={(e) => setZip(e.target.value)}>
-                  {(inputProps) => (
-                    <Input
-                      {...inputProps}
-                      placeholder="00000-000"
-                      className="bg-gray-700 text-gray-100 border-gray-600 placeholder:text-gray-500"
-                    />
-                  )}
-                </InputMask>
-              </div>
-              <div className="grid gap-2 sm:col-span-2">
-                <label className="text-xs text-gray-400">Rua</label>
-                <Input
-                  value={street}
-                  onChange={(e) => setStreet(e.target.value)}
-                  placeholder="Nome da rua"
-                  className="bg-gray-700 text-gray-100 border-gray-600 placeholder:text-gray-500"
-                />
-              </div>
-            </div>
-
-            <div className="grid sm:grid-cols-3 gap-3">
-              <div className="grid gap-2">
-                <label className="text-xs text-gray-400">Número</label>
-                <Input
-                  value={number}
-                  onChange={(e) => setNumber(e.target.value)}
-                  placeholder="Nº"
-                  className="bg-gray-700 text-gray-100 border-gray-600 placeholder:text-gray-500"
-                />
-              </div>
-              <div className="grid gap-2">
-                <label className="text-xs text-gray-400">Bairro</label>
-                <Input
-                  value={district}
-                  onChange={(e) => setDistrict(e.target.value)}
-                  placeholder="Bairro"
-                  className="bg-gray-700 text-gray-100 border-gray-600 placeholder:text-gray-500"
-                />
-              </div>
-              <div className="grid gap-2">
-                <label className="text-xs text-gray-400">UF</label>
-                <Input
-                  value={stateUF}
-                  onChange={(e) => setStateUF(e.target.value)}
-                  maxLength={2}
-                  placeholder="UF"
-                  className="bg-gray-700 text-gray-100 border-gray-600 placeholder:text-gray-500 uppercase"
-                />
-              </div>
-            </div>
-
-            <div className="grid gap-2">
-              <label className="text-xs text-gray-400">Cidade</label>
-              <Input
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                placeholder="Cidade"
-                className="bg-gray-700 text-gray-100 border-gray-600 placeholder:text-gray-500"
-              />
-            </div>
-
+            {/* Botão */}
             <div className="flex justify-end">
               <Button type="submit" disabled={loading} className="bg-cyan-600 hover:bg-cyan-500 text-white">
                 {loading ? 'Salvando...' : 'Salvar cadastro'}
